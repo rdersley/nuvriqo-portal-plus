@@ -1,0 +1,44 @@
+app:
+  id: REPLACE_WITH_FORGE_APP_ID
+  runtime:
+    name: nodejs22.x
+
+modules:
+  jiraServiceManagement:portalSubheader:
+    - key: nuvriqo-portal-plus-dashboard
+      resource: portal-ui
+      resolver:
+        function: portal-resolver
+      viewportSize: large
+      pages:
+        - help_center
+        - portal
+        - my_requests
+      unlicensedAccess:
+        - customer
+
+  jira:projectSettingsPage:
+    - key: nuvriqo-portal-plus-settings
+      resource: admin-ui
+      resolver:
+        function: admin-resolver
+      title: Nuvriqo Portal+
+      layout: blank
+
+  function:
+    - key: portal-resolver
+      handler: src/portal-resolver.handler
+    - key: admin-resolver
+      handler: src/admin-resolver.handler
+
+resources:
+  - key: portal-ui
+    path: static/portal/dist
+  - key: admin-ui
+    path: static/admin/dist
+
+permissions:
+  scopes:
+    - read:servicedesk-request
+    - read:jira-work
+    - storage:app
