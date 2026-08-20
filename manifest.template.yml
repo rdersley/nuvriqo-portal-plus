@@ -9,7 +9,6 @@ modules:
       resource: portal-ui
       resolver:
         function: portal-resolver
-      viewportSize: large
       pages:
         - help_center
         - portal
