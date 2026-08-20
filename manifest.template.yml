@@ -27,9 +27,9 @@ modules:
 
   function:
     - key: portal-resolver
-      handler: src/portal-resolver.handler
+      handler: portal-resolver.handler
     - key: admin-resolver
-      handler: src/admin-resolver.handler
+      handler: admin-resolver.handler
 
 resources:
   - key: portal-ui
