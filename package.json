@@ -5,14 +5,19 @@
   "description": "Nuvriqo Portal+ for Jira Service Management",
   "main": "src/index.js",
   "scripts": {
+    "build": "esbuild static/portal/src/app.js --bundle --format=iife --outfile=static/portal/dist/app.js && esbuild static/admin/src/app.js --bundle --format=iife --outfile=static/admin/dist/app.js",
     "lint": "forge lint",
-    "deploy": "forge deploy",
+    "deploy": "npm run build && forge deploy",
     "install:dev": "forge install -e development",
-    "check": "forge lint"
+    "check": "npm run build && forge lint"
   },
   "dependencies": {
     "@forge/api": "latest",
+    "@forge/bridge": "latest",
     "@forge/kvs": "latest",
     "@forge/resolver": "latest"
+  },
+  "devDependencies": {
+    "esbuild": "latest"
   }
 }
