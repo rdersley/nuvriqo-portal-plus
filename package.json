@@ -1,0 +1,18 @@
+{
+  "name": "nuvriqo-portal-plus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nuvriqo Portal+ for Jira Service Management",
+  "main": "src/index.js",
+  "scripts": {
+    "lint": "forge lint",
+    "deploy": "forge deploy",
+    "install:dev": "forge install -e development",
+    "check": "forge lint"
+  },
+  "dependencies": {
+    "@forge/api": "latest",
+    "@forge/kvs": "latest",
+    "@forge/resolver": "latest"
+  }
+}
