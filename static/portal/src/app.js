@@ -12,6 +12,22 @@ const mapped = (request, ids) => { const wanted = new Set((ids || []).map(String
 async function resize() { try { await view.resize(); } catch (_) {} }
 function setCardVisible(id, visible) { const el = document.getElementById(id); if (el?.closest('.card')) el.closest('.card').style.display = visible ? '' : 'none'; }
 
+function renderCategories(config) {
+  const categories = Array.isArray(config?.categories) ? config.categories.filter((c) => Array.isArray(c.requestTypes) && c.requestTypes.length) : [];
+  const section = document.getElementById('quick-actions-section');
+  const host = document.getElementById('quick-actions');
+  if (!categories.length || !config?.serviceDeskId) { section.hidden = true; host.innerHTML = ''; return; }
+  host.innerHTML = categories.map((category) => `
+    <div class="quick-category">
+      <h4>${esc(category.name)}</h4>
+      ${category.description ? `<p>${esc(category.description)}</p>` : ''}
+      <div class="quick-links">
+        ${category.requestTypes.map((rt) => `<a class="quick-link" target="_top" href="/servicedesk/customer/portal/${encodeURIComponent(config.serviceDeskId)}/create/${encodeURIComponent(rt.id)}">${esc(rt.name)}</a>`).join('')}
+      </div>
+    </div>`).join('');
+  section.hidden = false;
+}
+
 async function load() {
   try {
     const result = await invoke('getDashboard');
@@ -32,8 +48,9 @@ async function load() {
     setCardVisible('open', options.open !== false);
     setCardVisible('awaiting-you', options.awaitingCustomer !== false);
     setCardVisible('awaiting-support', options.awaitingSupport !== false);
+    renderCategories(config);
 
-    const recentSection = box.closest('.section');
+    const recentSection = document.querySelector('.recent-section');
     if (recentSection) recentSection.style.display = options.recent !== false ? '' : 'none';
 
     if (!values.length) {
