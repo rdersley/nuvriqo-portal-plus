@@ -48,7 +48,7 @@ async function getStatuses(projectId) {
   return [...statusMap.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
-resolver.define('health', async () => ({ ok: true, app: 'nuvriqo-portal-plus', surface: 'admin', phase: 'v1-discovery' }));
+resolver.define('health', async () => ({ ok: true, app: 'nuvriqo-portal-plus', surface: 'admin', phase: 'v1-categories' }));
 
 resolver.define('getDiscovery', async ({ context }) => {
   const projectId = context?.extension?.project?.id;
@@ -61,8 +61,8 @@ resolver.define('getDiscovery', async ({ context }) => {
   return {
     project: { id: projectId, key: projectKey || serviceDesk.projectKey || '' },
     serviceDesk: { id: serviceDesk.id, projectId: serviceDesk.projectId, projectName: serviceDesk.projectName, projectKey: serviceDesk.projectKey },
-    requestTypes: requestTypes.map((item) => ({ id: item.id, name: item.name, description: item.description || '', groupIds: item.groupIds || [] })),
-    organizations: organizations.map((item) => ({ id: item.id, name: item.name })), statuses, config: config || null
+    requestTypes: requestTypes.map((item) => ({ id: String(item.id), name: item.name, description: item.description || '', groupIds: item.groupIds || [] })),
+    organizations: organizations.map((item) => ({ id: String(item.id), name: item.name })), statuses, config: config || null
   };
 });
 
@@ -70,7 +70,25 @@ resolver.define('saveConfig', async ({ context, payload }) => {
   const projectId = context?.extension?.project?.id;
   if (!projectId) throw new Error('Missing project context.');
   const allowed = payload || {};
-  const config = { version: 1, displayName: String(allowed.displayName || 'Service dashboard').slice(0, 80), dashboard: { open: allowed.dashboard?.open !== false, awaitingCustomer: allowed.dashboard?.awaitingCustomer !== false, awaitingSupport: allowed.dashboard?.awaitingSupport !== false, recent: allowed.dashboard?.recent !== false }, audienceOrganizationIds: Array.isArray(allowed.audienceOrganizationIds) ? allowed.audienceOrganizationIds.map(String) : [], statusMapping: { awaitingCustomer: Array.isArray(allowed.statusMapping?.awaitingCustomer) ? allowed.statusMapping.awaitingCustomer.map(String) : [], awaitingSupport: Array.isArray(allowed.statusMapping?.awaitingSupport) ? allowed.statusMapping.awaitingSupport.map(String) : [] }, updatedAt: new Date().toISOString() };
+  const categories = Array.isArray(allowed.categories) ? allowed.categories.slice(0, 12).map((category, index) => ({
+    id: String(category.id || `category-${index + 1}`).slice(0, 80),
+    name: String(category.name || `Category ${index + 1}`).slice(0, 80),
+    description: String(category.description || '').slice(0, 180),
+    requestTypes: Array.isArray(category.requestTypes) ? category.requestTypes.slice(0, 50).map((rt) => ({ id: String(rt.id), name: String(rt.name || 'Request').slice(0, 100) })) : []
+  })) : [];
+  const config = {
+    version: 2,
+    serviceDeskId: String(allowed.serviceDeskId || ''),
+    displayName: String(allowed.displayName || 'Service dashboard').slice(0, 80),
+    dashboard: { open: allowed.dashboard?.open !== false, awaitingCustomer: allowed.dashboard?.awaitingCustomer !== false, awaitingSupport: allowed.dashboard?.awaitingSupport !== false, recent: allowed.dashboard?.recent !== false },
+    audienceOrganizationIds: Array.isArray(allowed.audienceOrganizationIds) ? allowed.audienceOrganizationIds.map(String) : [],
+    statusMapping: {
+      awaitingCustomer: Array.isArray(allowed.statusMapping?.awaitingCustomer) ? allowed.statusMapping.awaitingCustomer.map(String) : [],
+      awaitingSupport: Array.isArray(allowed.statusMapping?.awaitingSupport) ? allowed.statusMapping.awaitingSupport.map(String) : []
+    },
+    categories,
+    updatedAt: new Date().toISOString()
+  };
   await kvs.set(configKey(projectId), config);
   return config;
 });
