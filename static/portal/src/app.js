@@ -11,6 +11,7 @@ const mapped = (request, ids) => { const wanted = new Set((ids || []).map(String
 
 async function resize() { try { await view.resize(); } catch (_) {} }
 function setCardVisible(id, visible) { const el = document.getElementById(id); if (el?.closest('.card')) el.closest('.card').style.display = visible ? '' : 'none'; }
+function csvCell(value) { const s = safe(value).replace(/"/g, '""'); return `"${s}"`; }
 
 function renderCategories(config) {
   const categories = Array.isArray(config?.categories) ? config.categories.filter((c) => Array.isArray(c.requestTypes) && c.requestTypes.length) : [];
@@ -28,6 +29,37 @@ function renderCategories(config) {
   section.hidden = false;
 }
 
+function exportRows(requests) {
+  const headers = ['Key','Summary','Request type','Status','Created','Updated'];
+  const rows = requests.map((request) => [
+    request.issueKey || request.key,
+    summary(request),
+    request.requestType?.name || '',
+    status(request),
+    request.createdDate?.iso8601 || request.createdDate?.friendly || '',
+    request.updatedDate?.iso8601 || request.updatedDate?.friendly || ''
+  ]);
+  return [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+}
+
+async function exportCsv() {
+  const button = document.getElementById('exportCsv');
+  const message = document.getElementById('export-message');
+  button.disabled = true; message.hidden = false; message.textContent = 'Preparing CSV…';
+  try {
+    const data = await invoke('getExportRequests');
+    const values = Array.isArray(data?.values) ? data.values : [];
+    const blob = new Blob(['\ufeff', exportRows(values)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `portal-plus-requests-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    message.textContent = `${values.length} request${values.length === 1 ? '' : 's'} exported${data?.truncated ? ' (limited to first 1,000)' : ''}.`;
+  } catch (error) {
+    message.textContent = `Export failed: ${error?.message || String(error)}`;
+  } finally { button.disabled = false; await resize(); }
+}
+
 async function load() {
   try {
     const result = await invoke('getDashboard');
@@ -36,40 +68,25 @@ async function load() {
     const values = Array.isArray(data?.values) ? data.values : [];
     const mapping = config.statusMapping || {};
     const options = config.dashboard || {};
-
     const title = document.querySelector('.top h2');
     if (title && config.displayName) title.textContent = config.displayName;
-
     document.getElementById('total').textContent = data?.size ?? values.length;
     document.getElementById('open').textContent = values.filter((request) => !closed(request)).length;
     document.getElementById('awaiting-you').textContent = values.filter((request) => mapped(request, mapping.awaitingCustomer)).length;
     document.getElementById('awaiting-support').textContent = values.filter((request) => mapped(request, mapping.awaitingSupport)).length;
-
     setCardVisible('open', options.open !== false);
     setCardVisible('awaiting-you', options.awaitingCustomer !== false);
     setCardVisible('awaiting-support', options.awaitingSupport !== false);
     renderCategories(config);
-
     const recentSection = document.querySelector('.recent-section');
     if (recentSection) recentSection.style.display = options.recent !== false ? '' : 'none';
-
-    if (!values.length) {
-      box.className = 'message';
-      box.textContent = 'No requests are currently visible to this account.';
-      return;
-    }
-
+    if (!values.length) { box.className = 'message'; box.textContent = 'No requests are currently visible to this account.'; return; }
     box.className = 'requests';
-    box.innerHTML = values.slice(0, 4).map((request) => `
-      <div class="request">
-        <div class="key">${esc(request.issueKey || request.key)}</div>
-        <div class="summary">${esc(summary(request))}</div>
-        <div class="status">${esc(status(request))}</div>
-      </div>`).join('');
+    box.innerHTML = values.slice(0, 4).map((request) => `<div class="request"><div class="key">${esc(request.issueKey || request.key)}</div><div class="summary">${esc(summary(request))}</div><div class="status">${esc(status(request))}</div></div>`).join('');
   } catch (error) {
-    box.className = 'message error';
-    box.textContent = `Could not load Portal+ dashboard: ${error?.message || String(error)}`;
+    box.className = 'message error'; box.textContent = `Could not load Portal+ dashboard: ${error?.message || String(error)}`;
   } finally { await resize(); }
 }
 
+document.getElementById('exportCsv').addEventListener('click', exportCsv);
 window.addEventListener('load', async () => { await resize(); await load(); });
