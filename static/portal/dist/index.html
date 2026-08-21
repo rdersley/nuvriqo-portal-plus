@@ -14,11 +14,15 @@
     </div>
     <div class="cards">
       <div class="card"><div class="label">Open requests</div><div class="value" id="open">—</div></div>
-      <div class="card"><div class="label">Awaiting you</div><div class="value">—</div></div>
-      <div class="card"><div class="label">Awaiting support</div><div class="value">—</div></div>
+      <div class="card"><div class="label">Awaiting you</div><div class="value" id="awaiting-you">—</div></div>
+      <div class="card"><div class="label">Awaiting support</div><div class="value" id="awaiting-support">—</div></div>
       <div class="card"><div class="label">Visible requests</div><div class="value" id="total">—</div></div>
     </div>
-    <section class="section">
+    <section id="quick-actions-section" class="section quick-actions-section" hidden>
+      <h3>Quick actions</h3>
+      <div id="quick-actions" class="category-grid"></div>
+    </section>
+    <section class="section recent-section">
       <h3>Recent requests</h3>
       <div id="requests" class="message">Loading your requests…</div>
     </section>
