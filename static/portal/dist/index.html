@@ -24,7 +24,13 @@
       <div id="quick-actions" class="category-grid"></div>
     </section>
     <section class="section recent-section">
-      <h3>Recent requests</h3>
+      <div class="section-head"><h3>Requests</h3><span id="result-count" class="result-count"></span></div>
+      <div id="request-tools" class="request-tools" hidden>
+        <input id="request-search" type="search" placeholder="Search key or summary" aria-label="Search requests">
+        <select id="request-status" aria-label="Filter by status"><option value="">All statuses</option></select>
+        <select id="request-type" aria-label="Filter by request type"><option value="">All request types</option></select>
+        <select id="request-sort" aria-label="Sort requests"><option value="recent">Most recent</option><option value="oldest">Oldest</option><option value="key">Key</option></select>
+      </div>
       <div id="requests" class="message">Loading your requests…</div>
     </section>
   </main>
