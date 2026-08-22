@@ -36,7 +36,7 @@ async function getRequestTypes(serviceDeskId) {
 
 async function getOrganizations(serviceDeskId) {
   try {
-    const response = await api.asApp().requestJira(route`/rest/servicedeskapi/organization?serviceDeskId=${serviceDeskId}&limit=100`, { headers: { Accept: 'application/json' } });
+    const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/organization?limit=100`, { headers: { Accept: 'application/json' } });
     if (!response.ok) return [];
     const data = await response.json();
     return Array.isArray(data?.values) ? data.values : [];
@@ -56,20 +56,27 @@ async function getStatuses(projectId) {
   return [...statusMap.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
+async function requestTypeFields(serviceDeskId, requestTypeId) {
+  try {
+    const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype/${requestTypeId}/field`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data?.requestTypeFields) ? data.requestTypeFields : [];
+  } catch (_) { return []; }
+}
+
 async function getCustomerVisibleFields(serviceDeskId, requestTypes) {
   const fieldMap = new Map();
-  for (const requestType of requestTypes.slice(0, 100)) {
-    try {
-      const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype/${requestType.id}/field`, { headers: { Accept: 'application/json' } });
-      if (!response.ok) continue;
-      const data = await response.json();
-      for (const field of data?.requestTypeFields || []) {
+  const types = requestTypes.slice(0, 100);
+  for (let start = 0; start < types.length; start += 10) {
+    const batch = types.slice(start, start + 10);
+    const results = await Promise.all(batch.map((requestType) => requestTypeFields(serviceDeskId, requestType.id)));
+    for (const fields of results) {
+      for (const field of fields) {
         if (field?.visible === false || !field?.fieldId || field.fieldId === 'summary') continue;
         const id = String(field.fieldId);
         if (!fieldMap.has(id)) fieldMap.set(id, { id, name: String(field.name || id), type: String(field.jiraSchema?.type || '') });
       }
-    } catch (_) {
-      // A restricted request type must not block the rest of discovery.
     }
   }
   return [...fieldMap.values()].sort((a, b) => a.name.localeCompare(b.name));
