@@ -6,6 +6,12 @@ const resolver = new Resolver();
 const CONFIG_VERSION = 3;
 const configKey = (projectId) => `portalplus:config:${projectId}`;
 
+function licenseState(context) {
+  const environment = String(context?.environmentType || '').toLowerCase();
+  if (environment !== 'production') return { active: true, testEnvironment: true };
+  return { active: context?.license?.active === true, testEnvironment: false };
+}
+
 async function jsonOrError(response, label) {
   if (!response.ok) {
     const body = await response.text();
@@ -84,7 +90,7 @@ function validateServerSide(config) {
   if (config.statusMapping.awaitingSupport.some((id) => customer.has(id))) throw new Error('A status cannot be mapped to both Awaiting customer and Awaiting support.');
 }
 
-resolver.define('health', async () => ({ ok: true, app: 'nuvriqo-portal-plus', surface: 'admin', phase: 'v1-release-hardening', configVersion: CONFIG_VERSION }));
+resolver.define('health', async ({ context }) => ({ ok: true, app: 'nuvriqo-portal-plus', surface: 'admin', phase: 'marketplace-rc', configVersion: CONFIG_VERSION, licensing: licenseState(context) }));
 
 resolver.define('getDiscovery', async ({ context }) => {
   const projectId = context?.extension?.project?.id;
@@ -102,13 +108,15 @@ resolver.define('getDiscovery', async ({ context }) => {
     requestTypes: requestTypes.map((item) => ({ id: String(item.id), name: item.name, description: item.description || '', groupIds: item.groupIds || [] })),
     organizations: organizations.map((item) => ({ id: String(item.id), name: item.name })),
     statuses,
-    config
+    config,
+    licensing: licenseState(context)
   };
 });
 
 resolver.define('saveConfig', async ({ context, payload }) => {
   const projectId = context?.extension?.project?.id;
   if (!projectId) throw new Error('Missing project context.');
+  if (!licenseState(context).active) throw new Error('An active Nuvriqo Portal+ subscription is required to change configuration.');
   const allowed = payload || {};
   const config = migrateConfig({
     version: CONFIG_VERSION,
