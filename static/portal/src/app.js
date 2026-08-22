@@ -12,12 +12,32 @@ const closed = (request) => ['closed','resolved','done','cancelled','canceled'].
 const mapped = (request, ids) => { const wanted = new Set((ids || []).map(String)); return wanted.has(statusId(request)) || wanted.has(status(request)); };
 let allRequests = [];
 let licensed = true;
+let selectedColumns = [];
+let currentPage = 0;
+const PAGE_SIZE = 10;
 
 async function resize() { try { await view.resize(); } catch (_) {} }
 function setCardVisible(id, visible) { const el = document.getElementById(id); if (el?.closest('.card')) el.closest('.card').style.display = visible ? '' : 'none'; }
 function csvCell(value) { const s = safe(value).replace(/"/g, '""'); return `"${s}"`; }
 async function navigate(url) { if (!url) return; try { await router.navigate(url); } catch (_) { try { window.open(url, '_top'); } catch (_) {} } }
 function createdTime(request) { const raw = request.createdDate?.iso8601 || request.createdDate; const time = raw ? Date.parse(raw) : NaN; return Number.isFinite(time) ? time : 0; }
+
+function displayValue(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(displayValue).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    for (const key of ['label','displayName','name','value']) {
+      if (value[key] != null && typeof value[key] !== 'object') return safe(value[key]);
+    }
+    try { return JSON.stringify(value); } catch (_) { return ''; }
+  }
+  return safe(value);
+}
+
+function requestFieldValue(request, fieldId) {
+  const field = request.requestFieldValues?.find?.((item) => String(item.fieldId) === String(fieldId));
+  return displayValue(field?.value);
+}
 
 function renderLicenseNotice() {
   let notice = document.getElementById('license-notice');
@@ -58,20 +78,49 @@ function filteredRequests() {
   return result;
 }
 
+function columnClass() { return `cols-${Math.min(3, selectedColumns.length)}`; }
+
+function renderHeader() {
+  const header = document.getElementById('request-header');
+  if (!allRequests.length) { header.hidden = true; return; }
+  header.className = `request-header ${columnClass()}`;
+  header.innerHTML = `<span>Key</span><span>Request</span>${selectedColumns.map((field) => `<span>${esc(field.name)}</span>`).join('')}<span>Status</span>`;
+  header.hidden = false;
+}
+
+function renderPagination(total) {
+  const pagination = document.getElementById('pagination');
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage >= pages) currentPage = pages - 1;
+  pagination.hidden = total <= PAGE_SIZE;
+  document.getElementById('page-info').textContent = `Page ${currentPage + 1} of ${pages}`;
+  document.getElementById('page-prev').disabled = currentPage <= 0;
+  document.getElementById('page-next').disabled = currentPage >= pages - 1;
+}
+
 function renderRequestList() {
   const values = filteredRequests(); const count = document.getElementById('result-count');
-  count.textContent = `${values.length} shown`;
-  if (!values.length) { box.className = 'message empty'; box.innerHTML = allRequests.length ? '<strong>No matching requests.</strong><span>Try changing the Portal+ search or filters.</span>' : '<strong>No requests yet.</strong><span>Use the standard portal options to contact support.</span>'; resize(); return; }
+  const pages = Math.max(1, Math.ceil(values.length / PAGE_SIZE));
+  if (currentPage >= pages) currentPage = pages - 1;
+  const start = currentPage * PAGE_SIZE;
+  const pageValues = values.slice(start, start + PAGE_SIZE);
+  count.textContent = `${values.length} match${values.length === 1 ? '' : 'es'}`;
+  renderHeader();
+  renderPagination(values.length);
+  if (!values.length) { document.getElementById('request-header').hidden = true; box.className = 'message empty'; box.innerHTML = allRequests.length ? '<strong>No matching requests.</strong><span>Try changing the Portal+ search or filters.</span>' : '<strong>No requests yet.</strong><span>Use the standard portal options to contact support.</span>'; resize(); return; }
   box.className = 'requests';
-  box.innerHTML = values.slice(0, 10).map((request) => { const url = safe(request._links?.web || ''); return `<button class="request request-button" type="button" data-request-url="${esc(url)}"><div class="key">${esc(requestKey(request))}</div><div class="summary"><strong>${esc(summary(request))}</strong><span>${esc(requestTypeName(request))}</span></div><div class="status">${esc(status(request))}</div></button>`; }).join('');
-  if (values.length > 10) box.insertAdjacentHTML('beforeend', `<div class="more-results">Showing first 10 of ${values.length} matches. Use Jira's Requests page below for the full list.</div>`);
+  box.innerHTML = pageValues.map((request) => {
+    const url = safe(request._links?.web || '');
+    const customCells = selectedColumns.map((field) => `<div class="custom-field" title="${esc(field.name)}">${esc(requestFieldValue(request, field.id) || '—')}</div>`).join('');
+    return `<button class="request request-button ${columnClass()}" type="button" data-request-url="${esc(url)}"><div class="key">${esc(requestKey(request))}</div><div class="summary"><strong>${esc(summary(request))}</strong><span>${esc(requestTypeName(request))}</span></div>${customCells}<div class="status">${esc(status(request))}</div></button>`;
+  }).join('');
   box.querySelectorAll('[data-request-url]').forEach((button) => { if (button.dataset.requestUrl) button.addEventListener('click', () => navigate(button.dataset.requestUrl)); else button.disabled = true; });
   resize();
 }
 
 function exportRows(requests) {
-  const headers = ['Key','Summary','Request type','Status','Created','Updated'];
-  const rows = requests.map((request) => [requestKey(request), summary(request), requestTypeName(request), status(request), request.createdDate?.iso8601 || request.createdDate?.friendly || '', request.updatedDate?.iso8601 || request.updatedDate?.friendly || '']);
+  const headers = ['Key','Summary','Request type','Status','Created','Updated', ...selectedColumns.map((field) => field.name)];
+  const rows = requests.map((request) => [requestKey(request), summary(request), requestTypeName(request), status(request), request.createdDate?.iso8601 || request.createdDate?.friendly || '', request.updatedDate?.iso8601 || request.updatedDate?.friendly || '', ...selectedColumns.map((field) => requestFieldValue(request, field.id))]);
   return [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
 }
 
@@ -90,7 +139,9 @@ async function exportCsv() {
 
 async function load() {
   try {
-    const result = await invoke('getDashboard'); const data = result?.requests || {}; const config = result?.config || {}; const values = Array.isArray(data?.values) ? data.values : []; const mapping = config.statusMapping || {}; const options = config.dashboard || {}; allRequests = values; licensed = result?.licensing?.active !== false;
+    const result = await invoke('getDashboard');
+    if (result?.audienceAllowed === false) { document.querySelector('.wrap').style.display = 'none'; await resize(); return; }
+    const data = result?.requests || {}; const config = result?.config || {}; const values = Array.isArray(data?.values) ? data.values : []; const mapping = config.statusMapping || {}; const options = config.dashboard || {}; allRequests = values; selectedColumns = Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, 3) : []; licensed = result?.licensing?.active !== false; currentPage = 0;
     renderLicenseNotice();
     const exportButton = document.getElementById('exportCsv'); exportButton.disabled = !licensed; exportButton.title = licensed ? '' : 'Active subscription required';
     const title = document.querySelector('.top h2'); if (title && config.displayName) title.textContent = config.displayName;
@@ -103,6 +154,8 @@ async function load() {
   finally { await resize(); }
 }
 
-['request-search','request-status','request-type','request-sort'].forEach((id) => document.getElementById(id).addEventListener(id === 'request-search' ? 'input' : 'change', renderRequestList));
+['request-search','request-status','request-type','request-sort'].forEach((id) => document.getElementById(id).addEventListener(id === 'request-search' ? 'input' : 'change', () => { currentPage = 0; renderRequestList(); }));
+document.getElementById('page-prev').addEventListener('click', () => { if (currentPage > 0) { currentPage -= 1; renderRequestList(); } });
+document.getElementById('page-next').addEventListener('click', () => { currentPage += 1; renderRequestList(); });
 document.getElementById('exportCsv').addEventListener('click', exportCsv);
 window.addEventListener('load', async () => { await resize(); await load(); });
