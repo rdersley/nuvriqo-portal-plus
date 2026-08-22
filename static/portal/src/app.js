@@ -18,7 +18,7 @@ const PAGE_SIZE = 10;
 
 async function resize() { try { await view.resize(); } catch (_) {} }
 function setCardVisible(id, visible) { const el = document.getElementById(id); if (el?.closest('.card')) el.closest('.card').style.display = visible ? '' : 'none'; }
-function csvCell(value) { const s = safe(value).replace(/"/g, '""'); return `"${s}"`; }
+function csvCell(value) { let s = safe(value).replace(/\r?\n/g, ' '); if (/^\s*[=+\-@]/.test(s) || /^[\t\r]/.test(s)) s = `'${s}`; s = s.replace(/"/g, '""'); return `"${s}"`; }
 async function navigate(url) { if (!url) return; try { await router.navigate(url); } catch (_) { try { window.open(url, '_top'); } catch (_) {} } }
 function createdTime(request) { const raw = request.createdDate?.iso8601 || request.createdDate; const time = raw ? Date.parse(raw) : NaN; return Number.isFinite(time) ? time : 0; }
 
