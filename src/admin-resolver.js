@@ -3,7 +3,8 @@ import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
 
 const resolver = new Resolver();
-const CONFIG_VERSION = 3;
+const CONFIG_VERSION = 4;
+const MAX_CUSTOM_COLUMNS = 3;
 const configKey = (projectId) => `portalplus:config:${projectId}`;
 
 function licenseState(context) {
@@ -55,6 +56,25 @@ async function getStatuses(projectId) {
   return [...statusMap.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
+async function getCustomerVisibleFields(serviceDeskId, requestTypes) {
+  const fieldMap = new Map();
+  for (const requestType of requestTypes.slice(0, 100)) {
+    try {
+      const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype/${requestType.id}/field`, { headers: { Accept: 'application/json' } });
+      if (!response.ok) continue;
+      const data = await response.json();
+      for (const field of data?.requestTypeFields || []) {
+        if (field?.visible === false || !field?.fieldId || field.fieldId === 'summary') continue;
+        const id = String(field.fieldId);
+        if (!fieldMap.has(id)) fieldMap.set(id, { id, name: String(field.name || id), type: String(field.jiraSchema?.type || '') });
+      }
+    } catch (_) {
+      // A restricted request type must not block the rest of discovery.
+    }
+  }
+  return [...fieldMap.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function migrateConfig(config) {
   if (!config) return null;
   return {
@@ -63,8 +83,8 @@ function migrateConfig(config) {
     displayName: String(config.displayName || 'Service dashboard').slice(0, 80),
     dashboard: {
       open: config.dashboard?.open !== false,
-      awaitingCustomer: config.dashboard?.awaitingCustomer !== false,
-      awaitingSupport: config.dashboard?.awaitingSupport !== false,
+      awaitingCustomer: config.dashboard?.awaitingCustomer === true,
+      awaitingSupport: config.dashboard?.awaitingSupport === true,
       recent: config.dashboard?.recent !== false
     },
     audienceOrganizationIds: Array.isArray(config.audienceOrganizationIds) ? config.audienceOrganizationIds.map(String) : [],
@@ -78,6 +98,7 @@ function migrateConfig(config) {
       description: String(category.description || '').slice(0, 180),
       requestTypes: Array.isArray(category.requestTypes) ? category.requestTypes.slice(0, 50).map((rt) => ({ id: String(rt.id), name: String(rt.name || 'Request').slice(0, 100) })) : []
     })) : [],
+    requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, MAX_CUSTOM_COLUMNS).map((field) => ({ id: String(field.id || ''), name: String(field.name || field.id || '').slice(0, 100) })).filter((field) => field.id) : [],
     updatedAt: config.updatedAt || null
   };
 }
@@ -88,6 +109,9 @@ function validateServerSide(config) {
   if (new Set(names).size !== names.length) throw new Error('Visible category names must be unique.');
   const customer = new Set(config.statusMapping.awaitingCustomer);
   if (config.statusMapping.awaitingSupport.some((id) => customer.has(id))) throw new Error('A status cannot be mapped to both Awaiting customer and Awaiting support.');
+  if (config.dashboard.awaitingCustomer && !config.statusMapping.awaitingCustomer.length) throw new Error('Awaiting customer requires at least one mapped status.');
+  if (config.dashboard.awaitingSupport && !config.statusMapping.awaitingSupport.length) throw new Error('Awaiting support requires at least one mapped status.');
+  if (config.requestColumns.length > MAX_CUSTOM_COLUMNS) throw new Error(`No more than ${MAX_CUSTOM_COLUMNS} custom request columns can be selected.`);
 }
 
 resolver.define('health', async ({ context }) => ({ ok: true, app: 'nuvriqo-portal-plus', surface: 'admin', phase: 'marketplace-rc', configVersion: CONFIG_VERSION, licensing: licenseState(context) }));
@@ -99,7 +123,12 @@ resolver.define('getDiscovery', async ({ context }) => {
   const serviceDesk = await getServiceDeskForProject(projectId);
   if (!serviceDesk) throw new Error('No Jira Service Management service desk was found for this project.');
   const requestTypes = await getRequestTypes(serviceDesk.id);
-  const [organizations, statuses, stored] = await Promise.all([getOrganizations(serviceDesk.id), getStatuses(projectId), kvs.get(configKey(projectId))]);
+  const [organizations, statuses, fields, stored] = await Promise.all([
+    getOrganizations(serviceDesk.id),
+    getStatuses(projectId),
+    getCustomerVisibleFields(serviceDesk.id, requestTypes),
+    kvs.get(configKey(projectId))
+  ]);
   const config = migrateConfig(stored);
   if (stored && stored.version !== CONFIG_VERSION) await kvs.set(configKey(projectId), config);
   return {
@@ -108,6 +137,8 @@ resolver.define('getDiscovery', async ({ context }) => {
     requestTypes: requestTypes.map((item) => ({ id: String(item.id), name: item.name, description: item.description || '', groupIds: item.groupIds || [] })),
     organizations: organizations.map((item) => ({ id: String(item.id), name: item.name })),
     statuses,
+    customerVisibleFields: fields,
+    maxCustomColumns: MAX_CUSTOM_COLUMNS,
     config,
     licensing: licenseState(context)
   };
@@ -126,6 +157,7 @@ resolver.define('saveConfig', async ({ context, payload }) => {
     audienceOrganizationIds: allowed.audienceOrganizationIds,
     statusMapping: allowed.statusMapping,
     categories: allowed.categories,
+    requestColumns: allowed.requestColumns,
     updatedAt: new Date().toISOString()
   });
   validateServerSide(config);
