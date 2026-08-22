@@ -10,6 +10,12 @@ function projectIdFromContext(context) {
   return context?.extension?.project?.id || context?.extension?.serviceDesk?.projectId || null;
 }
 
+function licenseState(context) {
+  const environment = String(context?.environmentType || '').toLowerCase();
+  if (environment !== 'production') return { active: true, testEnvironment: true };
+  return { active: context?.license?.active === true, testEnvironment: false };
+}
+
 function defaultConfig() {
   return {
     version: CONFIG_VERSION,
@@ -54,18 +60,19 @@ async function requestPage(start = 0, limit = 100) {
   return response.json();
 }
 
-resolver.define('health', async () => ({ ok: true, app: 'nuvriqo-portal-plus', phase: 'v1-release-hardening', configVersion: CONFIG_VERSION }));
+resolver.define('health', async ({ context }) => ({ ok: true, app: 'nuvriqo-portal-plus', phase: 'marketplace-rc', configVersion: CONFIG_VERSION, licensing: licenseState(context) }));
 
 resolver.define('getDashboard', async ({ context }) => {
   const projectId = projectIdFromContext(context);
   const requests = await requestPage(0, 100);
   const stored = projectId ? await kvs.get(configKey(projectId)) : null;
-  return { requests, config: normalizeConfig(stored) };
+  return { requests, config: normalizeConfig(stored), licensing: licenseState(context) };
 });
 
 resolver.define('getMyRequests', async () => requestPage(0, 100));
 
-resolver.define('getExportRequests', async () => {
+resolver.define('getExportRequests', async ({ context }) => {
+  if (!licenseState(context).active) throw new Error('An active Nuvriqo Portal+ subscription is required to export requests.');
   const all = [];
   let start = 0;
   const limit = 100;
