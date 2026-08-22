@@ -10,7 +10,7 @@
   <main class="wrap">
     <div class="top">
       <div><h2>Your service dashboard</h2><p>A clearer view of your support requests.</p></div>
-      <div class="top-actions"><button id="exportCsv" class="export-button" type="button">Export CSV</button><span class="badge">V1 Preview</span></div>
+      <div class="top-actions"><button id="exportCsv" class="export-button" type="button">Export CSV</button></div>
     </div>
     <div class="cards">
       <div class="card"><div class="label">Open requests</div><div class="value" id="open">—</div></div>
@@ -31,7 +31,13 @@
         <select id="request-type" aria-label="Filter by request type"><option value="">All request types</option></select>
         <select id="request-sort" aria-label="Sort requests"><option value="recent">Most recent</option><option value="oldest">Oldest</option><option value="key">Key</option></select>
       </div>
+      <div id="request-header" class="request-header" hidden></div>
       <div id="requests" class="message">Loading your requests…</div>
+      <div id="pagination" class="pagination" hidden>
+        <button id="page-prev" class="page-button" type="button">Previous</button>
+        <span id="page-info"></span>
+        <button id="page-next" class="page-button" type="button">Next</button>
+      </div>
     </section>
   </main>
   <script src="./app.js"></script>
