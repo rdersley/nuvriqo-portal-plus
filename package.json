@@ -14,12 +14,12 @@
     "check": "npm run test && forge lint"
   },
   "dependencies": {
-    "@forge/api": "latest",
-    "@forge/bridge": "latest",
-    "@forge/kvs": "latest",
-    "@forge/resolver": "latest"
+    "@forge/api": "8.0.4",
+    "@forge/bridge": "6.2.0",
+    "@forge/kvs": "2.0.4",
+    "@forge/resolver": "2.0.0"
   },
   "devDependencies": {
-    "esbuild": "latest"
+    "esbuild": "0.28.2"
   }
 }
