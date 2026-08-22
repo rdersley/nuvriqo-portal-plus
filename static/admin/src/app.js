@@ -16,28 +16,10 @@ function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, (cha
 function errorText(error) { if (!error) return 'Unknown error'; if (typeof error === 'string') return error; return error.message || error.error?.message || JSON.stringify(error); }
 function uid() { return `category-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
 function defaultCategories() { return [{ id: uid(), name: 'Get help', description: 'Choose the service you need', requestTypeIds: discoveredRequestTypes.map((rt) => String(rt.id)) }]; }
-
-function setDirty(dirty) {
-  if (suppressDirty) return;
-  const indicator = $('dirtyIndicator');
-  indicator.className = `dirty-indicator ${dirty ? 'dirty' : 'clean'}`;
-  indicator.textContent = dirty ? 'Unsaved changes' : 'Saved';
-}
-
+function setDirty(dirty) { if (suppressDirty) return; const indicator = $('dirtyIndicator'); indicator.className = `dirty-indicator ${dirty ? 'dirty' : 'clean'}`; indicator.textContent = dirty ? 'Unsaved changes' : 'Saved'; }
 function renderRequestTypes(items) { if (!items.length) { $('requestTypes').textContent = 'No customer request types were discovered.'; return; } $('requestTypes').innerHTML = items.map((item) => `<div><strong>${escapeHtml(item.name)}</strong>${item.description ? ` — ${escapeHtml(item.description)}` : ''}</div>`).join(''); }
-
-function syncCategoryStateFromDom() {
-  if (!document.querySelector('.category')) return;
-  categoryState = readCategoriesFromDom().map((c) => ({ id:c.id,name:c.name,description:c.description,requestTypeIds:c.requestTypes.map((rt)=>rt.id) }));
-}
-
-function moveCategory(index, delta) {
-  syncCategoryStateFromDom();
-  const target = index + delta;
-  if (target < 0 || target >= categoryState.length) return;
-  [categoryState[index], categoryState[target]] = [categoryState[target], categoryState[index]];
-  renderCategories(); setDirty(true);
-}
+function syncCategoryStateFromDom() { if (!document.querySelector('.category')) return; categoryState = readCategoriesFromDom().map((c) => ({ id:c.id,name:c.name,description:c.description,requestTypeIds:c.requestTypes.map((rt)=>rt.id) })); }
+function moveCategory(index, delta) { syncCategoryStateFromDom(); const target = index + delta; if (target < 0 || target >= categoryState.length) return; [categoryState[index], categoryState[target]] = [categoryState[target], categoryState[index]]; renderCategories(); setDirty(true); }
 
 function renderCategories() {
   const host = $('categories');
@@ -49,56 +31,21 @@ function renderCategories() {
   host.querySelectorAll('input').forEach((input) => input.addEventListener('input', () => setDirty(true)));
 }
 
-function readCategoriesFromDom() {
-  return [...document.querySelectorAll('.category')].map((el, index) => {
-    const ids = [...el.querySelectorAll('.category-request-type:checked')].map((input) => input.value);
-    return { id: categoryState[index]?.id || uid(), name: el.querySelector('.category-name').value.trim() || `Category ${index + 1}`, description: el.querySelector('.category-description').value.trim(), requestTypes: ids.map((id) => { const rt = discoveredRequestTypes.find((item) => String(item.id) === String(id)); return { id: String(id), name: rt?.name || 'Request' }; }) };
-  });
-}
-
-function selectedRequestColumns() {
-  return selectedValues($('requestColumns')).map((id) => {
-    const field = discoveredFields.find((item) => String(item.id) === String(id));
-    return { id: String(id), name: field?.name || String(id) };
-  });
-}
-
-function validateConfig(categories, awaitingCustomer, awaitingSupport, requestColumns) {
-  if (!$('displayName').value.trim()) throw new Error('Display name cannot be empty.');
-  const activeCategories = categories.filter((category) => category.requestTypes.length);
-  const names = activeCategories.map((category) => category.name.trim().toLowerCase());
-  if (new Set(names).size !== names.length) throw new Error('Each visible service category must have a unique name.');
-  const overlap = awaitingCustomer.filter((id) => awaitingSupport.includes(id));
-  if (overlap.length) throw new Error('A status cannot be mapped to both Awaiting customer and Awaiting support.');
-  if ($('dashCustomer').checked && !awaitingCustomer.length) throw new Error('Choose at least one status for Awaiting customer, or turn that dashboard card off.');
-  if ($('dashSupport').checked && !awaitingSupport.length) throw new Error('Choose at least one status for Awaiting support, or turn that dashboard card off.');
-  if (requestColumns.length > maxCustomColumns) throw new Error(`Choose no more than ${maxCustomColumns} additional request fields.`);
-}
+function readCategoriesFromDom() { return [...document.querySelectorAll('.category')].map((el, index) => { const ids = [...el.querySelectorAll('.category-request-type:checked')].map((input) => input.value); return { id: categoryState[index]?.id || uid(), name: el.querySelector('.category-name').value.trim() || `Category ${index + 1}`, description: el.querySelector('.category-description').value.trim(), requestTypes: ids.map((id) => { const rt = discoveredRequestTypes.find((item) => String(item.id) === String(id)); return { id: String(id), name: rt?.name || 'Request' }; }) }; }); }
+function selectedRequestColumns() { return selectedValues($('requestColumns')).map((id) => { const field = discoveredFields.find((item) => String(item.id) === String(id)); return { id: String(id), name: field?.name || String(id) }; }); }
+function validateConfig(categories, awaitingCustomer, awaitingSupport, requestColumns) { if (!$('displayName').value.trim()) throw new Error('Dashboard heading cannot be empty.'); const activeCategories = categories.filter((category) => category.requestTypes.length); const names = activeCategories.map((category) => category.name.trim().toLowerCase()); if (new Set(names).size !== names.length) throw new Error('Each visible service category must have a unique name.'); const overlap = awaitingCustomer.filter((id) => awaitingSupport.includes(id)); if (overlap.length) throw new Error('A status cannot be mapped to both Awaiting customer and Awaiting support.'); if ($('dashCustomer').checked && !awaitingCustomer.length) throw new Error('Choose at least one status for Awaiting customer, or turn that dashboard card off.'); if ($('dashSupport').checked && !awaitingSupport.length) throw new Error('Choose at least one status for Awaiting support, or turn that dashboard card off.'); if (requestColumns.length > maxCustomColumns) throw new Error(`Choose no more than ${maxCustomColumns} additional request fields.`); }
 
 function applyConfig(config) {
   suppressDirty = true;
   $('displayName').value = config?.displayName || 'Service dashboard';
-  $('dashOpen').checked = config?.dashboard?.open !== false;
-  $('dashCustomer').checked = config?.dashboard?.awaitingCustomer === true;
-  $('dashSupport').checked = config?.dashboard?.awaitingSupport === true;
-  $('dashRecent').checked = config?.dashboard?.recent !== false;
-  setSelected($('organizations'), config?.audienceOrganizationIds || []);
-  setSelected($('awaitingCustomer'), config?.statusMapping?.awaitingCustomer || []);
-  setSelected($('awaitingSupport'), config?.statusMapping?.awaitingSupport || []);
-  setSelected($('requestColumns'), (config?.requestColumns || []).map((field) => field.id));
+  $('subtitle').value = config?.subtitle || 'A clearer view of your support requests.';
+  $('dashOpen').checked = config?.dashboard?.open !== false; $('dashCustomer').checked = config?.dashboard?.awaitingCustomer === true; $('dashSupport').checked = config?.dashboard?.awaitingSupport === true; $('dashRecent').checked = config?.dashboard?.recent !== false;
+  setSelected($('organizations'), config?.audienceOrganizationIds || []); setSelected($('awaitingCustomer'), config?.statusMapping?.awaitingCustomer || []); setSelected($('awaitingSupport'), config?.statusMapping?.awaitingSupport || []); setSelected($('requestColumns'), (config?.requestColumns || []).map((field) => field.id));
   categoryState = Array.isArray(config?.categories) && config.categories.length ? config.categories.map((c) => ({ id: c.id || uid(), name: c.name || 'Category', description: c.description || '', requestTypeIds: (c.requestTypes || []).map((rt) => String(rt.id)) })) : defaultCategories();
-  renderCategories();
-  $('savedAt').textContent = config?.updatedAt ? `Last saved ${new Date(config.updatedAt).toLocaleString()}` : 'Not saved yet';
-  suppressDirty = false; setDirty(false);
+  renderCategories(); $('savedAt').textContent = config?.updatedAt ? `Last saved ${new Date(config.updatedAt).toLocaleString()}` : 'Not saved yet'; suppressDirty = false; setDirty(false);
 }
 
-function restoreDefaults() {
-  suppressDirty = true;
-  $('displayName').value = 'Service dashboard'; $('dashOpen').checked = true; $('dashCustomer').checked = false; $('dashSupport').checked = false; $('dashRecent').checked = true;
-  setSelected($('organizations'), []); setSelected($('awaitingCustomer'), []); setSelected($('awaitingSupport'), []); setSelected($('requestColumns'), []);
-  categoryState = defaultCategories(); renderCategories(); suppressDirty = false; setDirty(true);
-  $('status').className = 'status loading'; $('status').textContent = 'Defaults restored locally. Review them, then Save configuration.';
-}
+function restoreDefaults() { suppressDirty = true; $('displayName').value = 'Service dashboard'; $('subtitle').value = 'A clearer view of your support requests.'; $('dashOpen').checked = true; $('dashCustomer').checked = false; $('dashSupport').checked = false; $('dashRecent').checked = true; setSelected($('organizations'), []); setSelected($('awaitingCustomer'), []); setSelected($('awaitingSupport'), []); setSelected($('requestColumns'), []); categoryState = defaultCategories(); renderCategories(); suppressDirty = false; setDirty(true); $('status').className = 'status loading'; $('status').textContent = 'Defaults restored locally. Review them, then Save configuration.'; }
 
 async function discover() {
   $('save').disabled = true; $('status').className = 'status loading'; $('status').textContent = 'Checking Forge bridge…';
@@ -123,16 +70,15 @@ async function save() {
   try {
     const categories = readCategoriesFromDom(); const awaitingCustomer = selectedValues($('awaitingCustomer')); const awaitingSupport = selectedValues($('awaitingSupport')); const requestColumns = selectedRequestColumns(); validateConfig(categories, awaitingCustomer, awaitingSupport, requestColumns);
     $('status').textContent = 'Saving Portal+ configuration…';
-    const saved = await invoke('saveConfig', { serviceDeskId: currentServiceDeskId, displayName: $('displayName').value.trim(), dashboard: { open: $('dashOpen').checked, awaitingCustomer: $('dashCustomer').checked, awaitingSupport: $('dashSupport').checked, recent: $('dashRecent').checked }, audienceOrganizationIds: selectedValues($('organizations')), statusMapping: { awaitingCustomer, awaitingSupport }, categories, requestColumns });
-    categoryState = categories.map((c) => ({ id: c.id, name: c.name, description: c.description, requestTypeIds: c.requestTypes.map((rt) => rt.id) })); $('savedAt').textContent = saved?.updatedAt ? `Last saved ${new Date(saved.updatedAt).toLocaleString()}` : ''; setDirty(false);
-    $('status').className = 'status ok'; $('status').textContent = 'Portal+ configuration saved and ready for customers.';
+    const saved = await invoke('saveConfig', { serviceDeskId: currentServiceDeskId, displayName: $('displayName').value.trim(), subtitle: $('subtitle').value.trim(), dashboard: { open: $('dashOpen').checked, awaitingCustomer: $('dashCustomer').checked, awaitingSupport: $('dashSupport').checked, recent: $('dashRecent').checked }, audienceOrganizationIds: selectedValues($('organizations')), statusMapping: { awaitingCustomer, awaitingSupport }, categories, requestColumns });
+    categoryState = categories.map((c) => ({ id: c.id, name: c.name, description: c.description, requestTypeIds: c.requestTypes.map((rt) => rt.id) })); $('savedAt').textContent = saved?.updatedAt ? `Last saved ${new Date(saved.updatedAt).toLocaleString()}` : ''; setDirty(false); $('status').className = 'status ok'; $('status').textContent = 'Portal+ configuration saved and ready for customers.';
   } catch (error) { $('status').className = 'status error'; $('status').textContent = `Could not save configuration: ${errorText(error)}`; }
   finally { $('save').disabled = !licenseActive; try { await view.resize(); } catch (_) {} }
 }
 
 $('addCategory').addEventListener('click', () => { syncCategoryStateFromDom(); categoryState.push({ id:uid(), name:`Category ${categoryState.length + 1}`, description:'', requestTypeIds:[] }); renderCategories(); setDirty(true); });
 $('defaults').addEventListener('click', restoreDefaults); $('reload').addEventListener('click', discover); $('save').addEventListener('click', save);
-['displayName','dashOpen','dashCustomer','dashSupport','dashRecent','organizations','awaitingCustomer','awaitingSupport','requestColumns'].forEach((id) => $(id).addEventListener('change', () => setDirty(true)));
+['displayName','subtitle','dashOpen','dashCustomer','dashSupport','dashRecent','organizations','awaitingCustomer','awaitingSupport','requestColumns'].forEach((id) => $(id).addEventListener('change', () => setDirty(true)));
 $('requestColumns').addEventListener('change', () => { const selected = selectedValues($('requestColumns')); if (selected.length > maxCustomColumns) { [...$('requestColumns').selectedOptions].slice(maxCustomColumns).forEach((option) => { option.selected = false; }); $('status').className = 'status error'; $('status').textContent = `Portal+ supports up to ${maxCustomColumns} additional request fields in V1.`; } });
 window.addEventListener('beforeunload', (event) => { if ($('dirtyIndicator').classList.contains('dirty')) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('DOMContentLoaded', discover);
