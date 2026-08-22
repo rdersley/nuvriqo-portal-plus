@@ -1,5 +1,7 @@
 app:
   id: REPLACE_WITH_FORGE_APP_ID
+  licensing:
+    enabled: true
   runtime:
     name: nodejs22.x
 
