@@ -3,7 +3,7 @@ import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
 
 const resolver = new Resolver();
-const CONFIG_VERSION = 4;
+const CONFIG_VERSION = 5;
 const MAX_CUSTOM_COLUMNS = 3;
 const configKey = (projectId) => `portalplus:config:${projectId}`;
 
@@ -104,6 +104,7 @@ function migrateConfig(config) {
       id: String(category.id || `category-${index + 1}`).slice(0, 80),
       name: String(category.name || `Category ${index + 1}`).slice(0, 80),
       description: String(category.description || '').slice(0, 180),
+      audienceOrganizationIds: Array.isArray(category.audienceOrganizationIds) ? category.audienceOrganizationIds.map(String).slice(0, 100) : [],
       requestTypes: Array.isArray(category.requestTypes) ? category.requestTypes.slice(0, 50).map((rt) => ({ id: String(rt.id), name: String(rt.name || 'Request').slice(0, 100) })) : []
     })) : [],
     requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, MAX_CUSTOM_COLUMNS).map((field) => ({ id: String(field.id || ''), name: String(field.name || field.id || '').slice(0, 100) })).filter((field) => field.id) : [],
