@@ -88,6 +88,7 @@ function migrateConfig(config) {
     version: CONFIG_VERSION,
     serviceDeskId: String(config.serviceDeskId || ''),
     displayName: String(config.displayName || 'Service dashboard').slice(0, 80),
+    subtitle: String(config.subtitle || 'A clearer view of your support requests.').slice(0, 140),
     dashboard: {
       open: config.dashboard?.open !== false,
       awaitingCustomer: config.dashboard?.awaitingCustomer === true,
@@ -160,6 +161,7 @@ resolver.define('saveConfig', async ({ context, payload }) => {
     version: CONFIG_VERSION,
     serviceDeskId: allowed.serviceDeskId,
     displayName: allowed.displayName,
+    subtitle: allowed.subtitle,
     dashboard: allowed.dashboard,
     audienceOrganizationIds: allowed.audienceOrganizationIds,
     statusMapping: allowed.statusMapping,
