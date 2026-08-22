@@ -45,9 +45,9 @@ modules:
 
   function:
     - key: resolver
-      handler: src/backend/index.handler
+      handler: backend/index.handler
     - key: reminder-worker
-      handler: src/backend/reminders.run
+      handler: backend/reminders.run
       timeoutSeconds: 120
 
   scheduledTrigger:
