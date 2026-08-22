@@ -1,0 +1,76 @@
+app:
+  id: ari:cloud:ecosystem::app/REPLACE_AFTER_FORGE_REGISTER
+  runtime:
+    name: nodejs22.x
+
+modules:
+  jira:issuePanel:
+    - key: smart-approval-agent-panel
+      resource: agent-panel
+      resolver:
+        function: resolver
+      render: native
+      title: Smart Approval
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+
+  jira:projectSettingsPage:
+    - key: smart-approval-project-settings
+      resource: settings-page
+      resolver:
+        function: resolver
+      render: native
+      title: Smart Approval Manager
+
+  jiraServiceManagement:portalSubheader:
+    - key: smart-approval-portal-summary
+      resource: portal-summary
+      resolver:
+        function: resolver
+      render: native
+      unlicensedAccess:
+        - customer
+        - unlicensed
+
+  jiraServiceManagement:portalUserMenuAction:
+    - key: smart-approval-my-approvals
+      resource: portal-approvals
+      resolver:
+        function: resolver
+      render: native
+      title: My Approvals
+      viewportSize: large
+      unlicensedAccess:
+        - customer
+        - unlicensed
+
+  function:
+    - key: resolver
+      handler: src/backend/index.handler
+    - key: reminder-worker
+      handler: src/backend/reminders.run
+      timeoutSeconds: 120
+
+  scheduledTrigger:
+    - key: smart-approval-reminders
+      function: reminder-worker
+      interval: hour
+
+resources:
+  - key: agent-panel
+    path: src/frontend/agent.jsx
+  - key: portal-summary
+    path: src/frontend/portal-summary.jsx
+  - key: portal-approvals
+    path: src/frontend/portal-approvals.jsx
+  - key: settings-page
+    path: src/frontend/settings.jsx
+
+permissions:
+  scopes:
+    - storage:app
+    - read:jira-work
+    - write:jira-work
+    - read:jira-user
+    - read:servicedesk-request
+    - write:servicedesk-request
+    - read:user:jira
