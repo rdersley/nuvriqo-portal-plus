@@ -3,7 +3,7 @@ import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
 
 const resolver = new Resolver();
-const CONFIG_VERSION = 3;
+const CONFIG_VERSION = 4;
 const configKey = (projectId) => `portalplus:config:${projectId}`;
 
 function projectIdFromContext(context) {
@@ -48,7 +48,7 @@ function normalizeConfig(config) {
       awaitingSupport: Array.isArray(config.statusMapping?.awaitingSupport) ? config.statusMapping.awaitingSupport.map(String) : []
     },
     categories: Array.isArray(config.categories) ? config.categories : [],
-    requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, 8) : [],
+    requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, 3).map((field) => ({ id: String(field.id || ''), name: String(field.name || field.id || '') })).filter((field) => field.id) : [],
     updatedAt: config.updatedAt || null
   };
 }
