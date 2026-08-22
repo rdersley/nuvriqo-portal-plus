@@ -1,0 +1,53 @@
+app:
+  id: ari:cloud:ecosystem::app/REPLACE_AFTER_FORGE_REGISTER
+  runtime:
+    name: nodejs22.x
+
+modules:
+  jiraServiceManagement:portalSubheader:
+    - key: nuvriqo-portal-plus-dashboard
+      resource: portal-dashboard
+      resolver:
+        function: resolver
+      render: native
+      unlicensedAccess:
+        - customer
+        - unlicensed
+
+  jiraServiceManagement:portalUserMenuAction:
+    - key: nuvriqo-portal-plus-menu
+      resource: portal-dashboard
+      resolver:
+        function: resolver
+      render: native
+      title: Portal+
+      viewportSize: large
+      unlicensedAccess:
+        - customer
+        - unlicensed
+
+  jira:projectSettingsPage:
+    - key: nuvriqo-portal-plus-settings
+      resource: settings
+      resolver:
+        function: resolver
+      render: native
+      title: Portal+ settings
+
+  function:
+    - key: resolver
+      handler: backend/index.handler
+
+resources:
+  - key: portal-dashboard
+    path: src/frontend/portal-dashboard.jsx
+  - key: settings
+    path: src/frontend/settings.jsx
+
+permissions:
+  scopes:
+    - storage:app
+    - read:jira-work
+    - read:jira-user
+    - read:servicedesk-request
+    - write:servicedesk-request
