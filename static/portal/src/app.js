@@ -69,10 +69,13 @@ function filteredRequests() {
   const query = document.getElementById('request-search').value.trim().toLowerCase();
   const wantedStatus = document.getElementById('request-status').value;
   const wantedType = document.getElementById('request-type').value;
+  const days = Number(document.getElementById('request-date').value || 0);
+  const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : 0;
   const sort = document.getElementById('request-sort').value;
   const result = allRequests.filter((request) => {
     const matchesText = !query || requestKey(request).toLowerCase().includes(query) || summary(request).toLowerCase().includes(query);
-    return matchesText && (!wantedStatus || status(request) === wantedStatus) && (!wantedType || requestTypeName(request) === wantedType);
+    const matchesDate = !cutoff || createdTime(request) >= cutoff;
+    return matchesText && matchesDate && (!wantedStatus || status(request) === wantedStatus) && (!wantedType || requestTypeName(request) === wantedType);
   });
   result.sort((a,b) => sort === 'oldest' ? createdTime(a) - createdTime(b) : sort === 'key' ? requestKey(a).localeCompare(requestKey(b), undefined, { numeric:true }) : createdTime(b) - createdTime(a));
   return result;
@@ -154,7 +157,7 @@ async function load() {
   finally { await resize(); }
 }
 
-['request-search','request-status','request-type','request-sort'].forEach((id) => document.getElementById(id).addEventListener(id === 'request-search' ? 'input' : 'change', () => { currentPage = 0; renderRequestList(); }));
+['request-search','request-status','request-type','request-date','request-sort'].forEach((id) => document.getElementById(id).addEventListener(id === 'request-search' ? 'input' : 'change', () => { currentPage = 0; renderRequestList(); }));
 document.getElementById('page-prev').addEventListener('click', () => { if (currentPage > 0) { currentPage -= 1; renderRequestList(); } });
 document.getElementById('page-next').addEventListener('click', () => { currentPage += 1; renderRequestList(); });
 document.getElementById('exportCsv').addEventListener('click', exportCsv);
