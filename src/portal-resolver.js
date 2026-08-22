@@ -3,10 +3,46 @@ import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
 
 const resolver = new Resolver();
+const CONFIG_VERSION = 3;
 const configKey = (projectId) => `portalplus:config:${projectId}`;
 
 function projectIdFromContext(context) {
   return context?.extension?.project?.id || context?.extension?.serviceDesk?.projectId || null;
+}
+
+function defaultConfig() {
+  return {
+    version: CONFIG_VERSION,
+    serviceDeskId: '',
+    displayName: 'Service dashboard',
+    dashboard: { open: true, awaitingCustomer: false, awaitingSupport: false, recent: true },
+    audienceOrganizationIds: [],
+    statusMapping: { awaitingCustomer: [], awaitingSupport: [] },
+    categories: [],
+    updatedAt: null
+  };
+}
+
+function normalizeConfig(config) {
+  if (!config) return defaultConfig();
+  return {
+    version: CONFIG_VERSION,
+    serviceDeskId: String(config.serviceDeskId || ''),
+    displayName: String(config.displayName || 'Service dashboard').slice(0, 80),
+    dashboard: {
+      open: config.dashboard?.open !== false,
+      awaitingCustomer: config.dashboard?.awaitingCustomer === true,
+      awaitingSupport: config.dashboard?.awaitingSupport === true,
+      recent: config.dashboard?.recent !== false
+    },
+    audienceOrganizationIds: Array.isArray(config.audienceOrganizationIds) ? config.audienceOrganizationIds.map(String) : [],
+    statusMapping: {
+      awaitingCustomer: Array.isArray(config.statusMapping?.awaitingCustomer) ? config.statusMapping.awaitingCustomer.map(String) : [],
+      awaitingSupport: Array.isArray(config.statusMapping?.awaitingSupport) ? config.statusMapping.awaitingSupport.map(String) : []
+    },
+    categories: Array.isArray(config.categories) ? config.categories : [],
+    updatedAt: config.updatedAt || null
+  };
 }
 
 async function requestPage(start = 0, limit = 100) {
@@ -18,24 +54,13 @@ async function requestPage(start = 0, limit = 100) {
   return response.json();
 }
 
-resolver.define('health', async () => ({ ok: true, app: 'nuvriqo-portal-plus', phase: 'v1-dashboard-categories-export' }));
+resolver.define('health', async () => ({ ok: true, app: 'nuvriqo-portal-plus', phase: 'v1-release-hardening', configVersion: CONFIG_VERSION }));
 
 resolver.define('getDashboard', async ({ context }) => {
   const projectId = projectIdFromContext(context);
   const requests = await requestPage(0, 100);
-  const config = projectId ? await kvs.get(configKey(projectId)) : null;
-  return {
-    requests,
-    config: config || {
-      version: 1,
-      serviceDeskId: '',
-      displayName: 'Service dashboard',
-      dashboard: { open: true, awaitingCustomer: true, awaitingSupport: true, recent: true },
-      audienceOrganizationIds: [],
-      statusMapping: { awaitingCustomer: [], awaitingSupport: [] },
-      categories: []
-    }
-  };
+  const stored = projectId ? await kvs.get(configKey(projectId)) : null;
+  return { requests, config: normalizeConfig(stored) };
 });
 
 resolver.define('getMyRequests', async () => requestPage(0, 100));
