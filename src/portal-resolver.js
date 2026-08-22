@@ -25,6 +25,7 @@ function defaultConfig() {
     audienceOrganizationIds: [],
     statusMapping: { awaitingCustomer: [], awaitingSupport: [] },
     categories: [],
+    requestColumns: [],
     updatedAt: null
   };
 }
@@ -47,6 +48,7 @@ function normalizeConfig(config) {
       awaitingSupport: Array.isArray(config.statusMapping?.awaitingSupport) ? config.statusMapping.awaitingSupport.map(String) : []
     },
     categories: Array.isArray(config.categories) ? config.categories : [],
+    requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, 8) : [],
     updatedAt: config.updatedAt || null
   };
 }
@@ -60,19 +62,45 @@ async function requestPage(start = 0, limit = 100) {
   return response.json();
 }
 
+async function currentCustomerOrganizations() {
+  try {
+    const response = await api.asUser().requestJira(route`/rest/servicedeskapi/organization?limit=100`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data?.values) ? data.values.map((item) => String(item.id)) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function audienceAllowed(config) {
+  const required = Array.isArray(config?.audienceOrganizationIds) ? config.audienceOrganizationIds.map(String) : [];
+  if (!required.length) return true;
+  const memberships = new Set(await currentCustomerOrganizations());
+  return required.some((id) => memberships.has(String(id)));
+}
+
 resolver.define('health', async ({ context }) => ({ ok: true, app: 'nuvriqo-portal-plus', phase: 'marketplace-rc', configVersion: CONFIG_VERSION, licensing: licenseState(context) }));
 
 resolver.define('getDashboard', async ({ context }) => {
   const projectId = projectIdFromContext(context);
-  const requests = await requestPage(0, 100);
   const stored = projectId ? await kvs.get(configKey(projectId)) : null;
-  return { requests, config: normalizeConfig(stored), licensing: licenseState(context) };
+  const config = normalizeConfig(stored);
+  const allowed = await audienceAllowed(config);
+  if (!allowed) {
+    return { requests: { values: [], size: 0, isLastPage: true }, config: defaultConfig(), licensing: licenseState(context), audienceAllowed: false };
+  }
+  const requests = await requestPage(0, 100);
+  return { requests, config, licensing: licenseState(context), audienceAllowed: true };
 });
 
 resolver.define('getMyRequests', async () => requestPage(0, 100));
 
 resolver.define('getExportRequests', async ({ context }) => {
   if (!licenseState(context).active) throw new Error('An active Nuvriqo Portal+ subscription is required to export requests.');
+  const projectId = projectIdFromContext(context);
+  const config = normalizeConfig(projectId ? await kvs.get(configKey(projectId)) : null);
+  if (!(await audienceAllowed(config))) throw new Error('Portal+ is not enabled for this customer audience.');
   const all = [];
   let start = 0;
   const limit = 100;
