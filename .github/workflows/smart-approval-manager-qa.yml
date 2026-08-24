@@ -30,23 +30,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - name: Install dependencies
         run: npm install
-      - name: Validate package
-        run: npm test --if-present
+      - name: Validate backend syntax
+        run: npm test
       - name: Forge lint
         shell: bash
         run: |
-          if grep -q 'REPLACE_AFTER_FORGE_REGISTER' manifest.yml; then
-            echo 'Forge app ID not registered yet; code/package validation complete, skipping Forge lint.'
-            exit 0
-          fi
           if [ -z "$FORGE_EMAIL" ] || [ -z "$FORGE_API_TOKEN" ]; then
             echo 'Forge credentials are not configured; skipping Forge lint.'
             exit 0
           fi
-          npm install --global @forge/cli
+          npm install --global @forge/cli@latest
           forge settings set usage-analytics false
           forge lint
 
@@ -64,12 +60,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Ensure app is registered
-        run: '! grep -q REPLACE_AFTER_FORGE_REGISTER manifest.yml'
+          node-version: 24
       - name: Install
         run: |
           npm install
-          npm install --global @forge/cli
+          npm install --global @forge/cli@latest
+          forge settings set usage-analytics false
       - name: Deploy
         run: forge deploy -e development --non-interactive
