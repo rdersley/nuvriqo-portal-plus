@@ -1,178 +1,23 @@
 import Resolver from '@forge/resolver';
-import api, { route } from '@forge/api';
-import { kvs } from '@forge/kvs';
-
-const resolver = new Resolver();
-const CONFIG_VERSION = 5;
-const MAX_CUSTOM_COLUMNS = 3;
-const configKey = (projectId) => `portalplus:config:${projectId}`;
-
-function licenseState(context) {
-  const environment = String(context?.environmentType || '').toLowerCase();
-  if (environment !== 'production') return { active: true, testEnvironment: true };
-  return { active: context?.license?.active === true, testEnvironment: false };
-}
-
-async function jsonOrError(response, label) {
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`${label} failed (${response.status}): ${body}`);
-  }
-  return response.json();
-}
-
-async function getServiceDeskForProject(projectId) {
-  const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk?projectId=${projectId}&limit=50`, { headers: { Accept: 'application/json' } });
-  const data = await jsonOrError(response, 'Service desk discovery');
-  const values = Array.isArray(data?.values) ? data.values : [];
-  return values.find((item) => String(item.projectId) === String(projectId)) || values[0] || null;
-}
-
-async function getRequestTypes(serviceDeskId) {
-  const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype?limit=100`, { headers: { Accept: 'application/json' } });
-  const data = await jsonOrError(response, 'Request type discovery');
-  return Array.isArray(data?.values) ? data.values : [];
-}
-
-async function getOrganizations(serviceDeskId) {
-  try {
-    const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/organization?limit=100`, { headers: { Accept: 'application/json' } });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return Array.isArray(data?.values) ? data.values : [];
-  } catch (_) { return []; }
-}
-
-async function getStatuses(projectId) {
-  const response = await api.asApp().requestJira(route`/rest/api/3/project/${projectId}/statuses`, { headers: { Accept: 'application/json' } });
-  const data = await jsonOrError(response, 'Project status discovery');
-  const statusMap = new Map();
-  for (const issueType of Array.isArray(data) ? data : []) {
-    for (const status of issueType.statuses || []) {
-      const key = String(status.id ?? status.name);
-      if (!statusMap.has(key)) statusMap.set(key, { id: status.id ?? key, name: status.name ?? key, category: status.statusCategory?.key || '' });
-    }
-  }
-  return [...statusMap.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
-}
-
-async function requestTypeFields(serviceDeskId, requestTypeId) {
-  try {
-    const response = await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype/${requestTypeId}/field`, { headers: { Accept: 'application/json' } });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return Array.isArray(data?.requestTypeFields) ? data.requestTypeFields : [];
-  } catch (_) { return []; }
-}
-
-async function getCustomerVisibleFields(serviceDeskId, requestTypes) {
-  const fieldMap = new Map();
-  const types = requestTypes.slice(0, 100);
-  for (let start = 0; start < types.length; start += 10) {
-    const batch = types.slice(start, start + 10);
-    const results = await Promise.all(batch.map((requestType) => requestTypeFields(serviceDeskId, requestType.id)));
-    for (const fields of results) {
-      for (const field of fields) {
-        if (field?.visible === false || !field?.fieldId || field.fieldId === 'summary') continue;
-        const id = String(field.fieldId);
-        if (!fieldMap.has(id)) fieldMap.set(id, { id, name: String(field.name || id), type: String(field.jiraSchema?.type || '') });
-      }
-    }
-  }
-  return [...fieldMap.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function migrateConfig(config) {
-  if (!config) return null;
-  return {
-    version: CONFIG_VERSION,
-    serviceDeskId: String(config.serviceDeskId || ''),
-    displayName: String(config.displayName || 'Service dashboard').slice(0, 80),
-    subtitle: String(config.subtitle || 'A clearer view of your support requests.').slice(0, 140),
-    dashboard: {
-      open: config.dashboard?.open !== false,
-      awaitingCustomer: config.dashboard?.awaitingCustomer === true,
-      awaitingSupport: config.dashboard?.awaitingSupport === true,
-      recent: config.dashboard?.recent !== false
-    },
-    audienceOrganizationIds: Array.isArray(config.audienceOrganizationIds) ? config.audienceOrganizationIds.map(String) : [],
-    statusMapping: {
-      awaitingCustomer: Array.isArray(config.statusMapping?.awaitingCustomer) ? config.statusMapping.awaitingCustomer.map(String) : [],
-      awaitingSupport: Array.isArray(config.statusMapping?.awaitingSupport) ? config.statusMapping.awaitingSupport.map(String) : []
-    },
-    categories: Array.isArray(config.categories) ? config.categories.slice(0, 12).map((category, index) => ({
-      id: String(category.id || `category-${index + 1}`).slice(0, 80),
-      name: String(category.name || `Category ${index + 1}`).slice(0, 80),
-      description: String(category.description || '').slice(0, 180),
-      audienceOrganizationIds: Array.isArray(category.audienceOrganizationIds) ? category.audienceOrganizationIds.map(String).slice(0, 100) : [],
-      requestTypes: Array.isArray(category.requestTypes) ? category.requestTypes.slice(0, 50).map((rt) => ({ id: String(rt.id), name: String(rt.name || 'Request').slice(0, 100) })) : []
-    })) : [],
-    requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, MAX_CUSTOM_COLUMNS).map((field) => ({ id: String(field.id || ''), name: String(field.name || field.id || '').slice(0, 100) })).filter((field) => field.id) : [],
-    updatedAt: config.updatedAt || null
-  };
-}
-
-function validateServerSide(config) {
-  if (!config.displayName.trim()) throw new Error('Display name cannot be empty.');
-  const names = config.categories.filter((category) => category.requestTypes.length).map((category) => category.name.trim().toLowerCase());
-  if (new Set(names).size !== names.length) throw new Error('Visible category names must be unique.');
-  const customer = new Set(config.statusMapping.awaitingCustomer);
-  if (config.statusMapping.awaitingSupport.some((id) => customer.has(id))) throw new Error('A status cannot be mapped to both Awaiting customer and Awaiting support.');
-  if (config.dashboard.awaitingCustomer && !config.statusMapping.awaitingCustomer.length) throw new Error('Awaiting customer requires at least one mapped status.');
-  if (config.dashboard.awaitingSupport && !config.statusMapping.awaitingSupport.length) throw new Error('Awaiting support requires at least one mapped status.');
-  if (config.requestColumns.length > MAX_CUSTOM_COLUMNS) throw new Error(`No more than ${MAX_CUSTOM_COLUMNS} custom request columns can be selected.`);
-}
-
-resolver.define('health', async ({ context }) => ({ ok: true, app: 'nuvriqo-portal-plus', surface: 'admin', phase: 'marketplace-rc', configVersion: CONFIG_VERSION, licensing: licenseState(context) }));
-
-resolver.define('getDiscovery', async ({ context }) => {
-  const projectId = context?.extension?.project?.id;
-  const projectKey = context?.extension?.project?.key;
-  if (!projectId) throw new Error('Portal+ could not determine the current JSM project from the app context.');
-  const serviceDesk = await getServiceDeskForProject(projectId);
-  if (!serviceDesk) throw new Error('No Jira Service Management service desk was found for this project.');
-  const requestTypes = await getRequestTypes(serviceDesk.id);
-  const [organizations, statuses, fields, stored] = await Promise.all([
-    getOrganizations(serviceDesk.id),
-    getStatuses(projectId),
-    getCustomerVisibleFields(serviceDesk.id, requestTypes),
-    kvs.get(configKey(projectId))
-  ]);
-  const config = migrateConfig(stored);
-  if (stored && stored.version !== CONFIG_VERSION) await kvs.set(configKey(projectId), config);
-  return {
-    project: { id: projectId, key: projectKey || serviceDesk.projectKey || '' },
-    serviceDesk: { id: serviceDesk.id, projectId: serviceDesk.projectId, projectName: serviceDesk.projectName, projectKey: serviceDesk.projectKey },
-    requestTypes: requestTypes.map((item) => ({ id: String(item.id), name: item.name, description: item.description || '', groupIds: item.groupIds || [] })),
-    organizations: organizations.map((item) => ({ id: String(item.id), name: item.name })),
-    statuses,
-    customerVisibleFields: fields,
-    maxCustomColumns: MAX_CUSTOM_COLUMNS,
-    config,
-    licensing: licenseState(context)
-  };
-});
-
-resolver.define('saveConfig', async ({ context, payload }) => {
-  const projectId = context?.extension?.project?.id;
-  if (!projectId) throw new Error('Missing project context.');
-  if (!licenseState(context).active) throw new Error('An active Nuvriqo Portal+ subscription is required to change configuration.');
-  const allowed = payload || {};
-  const config = migrateConfig({
-    version: CONFIG_VERSION,
-    serviceDeskId: allowed.serviceDeskId,
-    displayName: allowed.displayName,
-    subtitle: allowed.subtitle,
-    dashboard: allowed.dashboard,
-    audienceOrganizationIds: allowed.audienceOrganizationIds,
-    statusMapping: allowed.statusMapping,
-    categories: allowed.categories,
-    requestColumns: allowed.requestColumns,
-    updatedAt: new Date().toISOString()
-  });
-  validateServerSide(config);
-  await kvs.set(configKey(projectId), config);
-  return config;
-});
-
-export const handler = resolver.getDefinitions();
+import api,{route} from '@forge/api';
+import {kvs} from '@forge/kvs';
+const resolver=new Resolver();
+const CONFIG_VERSION=6,MAX_CUSTOM_COLUMNS=3,MAX_EXPERIENCES=12;
+const configKey=(projectId)=>`portalplus:config:${projectId}`;
+const uid=(prefix='item')=>`${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+function licenseState(context){const environment=String(context?.environmentType||'').toLowerCase();if(environment!=='production')return{active:true,testEnvironment:true};return{active:context?.license?.active===true,testEnvironment:false};}
+async function jsonOrError(response,label){if(!response.ok){const body=await response.text();throw new Error(`${label} failed (${response.status}): ${body}`);}return response.json();}
+async function getServiceDeskForProject(projectId){const r=await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk?projectId=${projectId}&limit=50`,{headers:{Accept:'application/json'}});const d=await jsonOrError(r,'Service desk discovery');return(d.values||[]).find(x=>String(x.projectId)===String(projectId))||d.values?.[0]||null;}
+async function getRequestTypes(serviceDeskId){const r=await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype?limit=100`,{headers:{Accept:'application/json'}});const d=await jsonOrError(r,'Request type discovery');return Array.isArray(d.values)?d.values:[];}
+async function getOrganizations(serviceDeskId){try{const r=await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/organization?limit=100`,{headers:{Accept:'application/json'}});if(!r.ok)return[];const d=await r.json();return Array.isArray(d.values)?d.values:[];}catch(_){return[];}}
+async function getStatuses(projectId){const r=await api.asApp().requestJira(route`/rest/api/3/project/${projectId}/statuses`,{headers:{Accept:'application/json'}});const d=await jsonOrError(r,'Project status discovery'),m=new Map();for(const t of Array.isArray(d)?d:[])for(const s of t.statuses||[]){const k=String(s.id??s.name);if(!m.has(k))m.set(k,{id:s.id??k,name:s.name??k,category:s.statusCategory?.key||''});}return[...m.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name)));}
+async function requestTypeFields(serviceDeskId,requestTypeId){try{const r=await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${serviceDeskId}/requesttype/${requestTypeId}/field`,{headers:{Accept:'application/json'}});if(!r.ok)return[];const d=await r.json();return Array.isArray(d.requestTypeFields)?d.requestTypeFields:[];}catch(_){return[];}}
+async function getCustomerVisibleFields(serviceDeskId,requestTypes){const m=new Map();for(let i=0;i<requestTypes.length;i+=10){const batch=requestTypes.slice(i,i+10),results=await Promise.all(batch.map(t=>requestTypeFields(serviceDeskId,t.id)));for(const fields of results)for(const f of fields){if(f?.visible===false||!f?.fieldId||f.fieldId==='summary')continue;const id=String(f.fieldId);if(!m.has(id))m.set(id,{id,name:String(f.name||id),type:String(f.jiraSchema?.type||'')});}}return[...m.values()].sort((a,b)=>a.name.localeCompare(b.name));}
+function normalizeCategory(c,index=0){return{id:String(c?.id||uid('category')).slice(0,80),name:String(c?.name||`Category ${index+1}`).slice(0,80),description:String(c?.description||'').slice(0,180),requestTypes:Array.isArray(c?.requestTypes)?c.requestTypes.slice(0,50).map(rt=>({id:String(rt.id),name:String(rt.name||'Request').slice(0,100)})):[],audienceOrganizationIds:Array.isArray(c?.audienceOrganizationIds)?c.audienceOrganizationIds.map(String):[]};}
+function normalizeExperience(e,index=0){return{id:String(e?.id||uid('experience')).slice(0,80),name:String(e?.name||`Experience ${index+1}`).slice(0,80),audienceOrganizationIds:Array.isArray(e?.audienceOrganizationIds)?e.audienceOrganizationIds.map(String):[],displayName:String(e?.displayName||e?.name||'Service dashboard').slice(0,80),subtitle:String(e?.subtitle||'A clearer view of your support requests.').slice(0,140),dashboard:{open:e?.dashboard?.open!==false,awaitingCustomer:e?.dashboard?.awaitingCustomer===true,awaitingSupport:e?.dashboard?.awaitingSupport===true,recent:e?.dashboard?.recent!==false,actionCentre:e?.dashboard?.actionCentre!==false},statusMapping:{awaitingCustomer:Array.isArray(e?.statusMapping?.awaitingCustomer)?e.statusMapping.awaitingCustomer.map(String):[],awaitingSupport:Array.isArray(e?.statusMapping?.awaitingSupport)?e.statusMapping.awaitingSupport.map(String):[]},categories:Array.isArray(e?.categories)?e.categories.slice(0,12).map(normalizeCategory):[],requestColumns:Array.isArray(e?.requestColumns)?e.requestColumns.slice(0,MAX_CUSTOM_COLUMNS).map(f=>({id:String(f.id||''),name:String(f.name||f.id||'').slice(0,100)})).filter(f=>f.id):[],announcements:Array.isArray(e?.announcements)?e.announcements.slice(0,8).map(a=>({id:String(a.id||uid('announcement')).slice(0,80),title:String(a.title||'Announcement').slice(0,100),body:String(a.body||'').slice(0,400),style:['info','warning','success'].includes(a.style)?a.style:'info'})):[],links:Array.isArray(e?.links)?e.links.slice(0,12).map(l=>({id:String(l.id||uid('link')).slice(0,80),label:String(l.label||'Useful link').slice(0,80),url:String(l.url||'').slice(0,500),description:String(l.description||'').slice(0,140)})).filter(l=>/^https:\/\//i.test(l.url)):[]};}
+function migrateConfig(config){if(!config)return{version:CONFIG_VERSION,serviceDeskId:'',experiences:[],updatedAt:null};if(Array.isArray(config.experiences))return{version:CONFIG_VERSION,serviceDeskId:String(config.serviceDeskId||''),experiences:config.experiences.slice(0,MAX_EXPERIENCES).map(normalizeExperience),updatedAt:config.updatedAt||null};const legacy=normalizeExperience({id:'default',name:'Default experience',audienceOrganizationIds:config.audienceOrganizationIds,displayName:config.displayName,subtitle:config.subtitle,dashboard:config.dashboard,statusMapping:config.statusMapping,categories:config.categories,requestColumns:config.requestColumns},0);return{version:CONFIG_VERSION,serviceDeskId:String(config.serviceDeskId||''),experiences:[legacy],updatedAt:config.updatedAt||null};}
+function validate(config){if(!config.experiences.length)throw new Error('Create at least one customer experience.');const names=config.experiences.map(e=>e.name.trim().toLowerCase());if(new Set(names).size!==names.length)throw new Error('Experience names must be unique.');for(const e of config.experiences){if(!e.name.trim()||!e.displayName.trim())throw new Error('Every experience needs a name and dashboard heading.');const overlap=e.statusMapping.awaitingCustomer.filter(id=>e.statusMapping.awaitingSupport.includes(id));if(overlap.length)throw new Error(`${e.name}: a status cannot be both Awaiting customer and Awaiting support.`);if(e.dashboard.awaitingCustomer&&!e.statusMapping.awaitingCustomer.length)throw new Error(`${e.name}: map at least one Awaiting customer status or disable that card.`);if(e.dashboard.awaitingSupport&&!e.statusMapping.awaitingSupport.length)throw new Error(`${e.name}: map at least one Awaiting support status or disable that card.`);const catNames=e.categories.filter(c=>c.requestTypes.length).map(c=>c.name.trim().toLowerCase());if(new Set(catNames).size!==catNames.length)throw new Error(`${e.name}: visible category names must be unique.`);}}
+resolver.define('health',async({context})=>({ok:true,app:'nuvriqo-portal-plus',surface:'admin',phase:'multi-experience',configVersion:CONFIG_VERSION,licensing:licenseState(context)}));
+resolver.define('getDiscovery',async({context})=>{const projectId=context?.extension?.project?.id,projectKey=context?.extension?.project?.key;if(!projectId)throw new Error('Portal+ could not determine the current JSM project.');const serviceDesk=await getServiceDeskForProject(projectId);if(!serviceDesk)throw new Error('No Jira Service Management service desk was found for this project.');const requestTypes=await getRequestTypes(serviceDesk.id);const[organizations,statuses,fields,stored]=await Promise.all([getOrganizations(serviceDesk.id),getStatuses(projectId),getCustomerVisibleFields(serviceDesk.id,requestTypes),kvs.get(configKey(projectId))]);const config=migrateConfig(stored);if(stored&&stored.version!==CONFIG_VERSION)await kvs.set(configKey(projectId),config);return{project:{id:projectId,key:projectKey||serviceDesk.projectKey||''},serviceDesk:{id:String(serviceDesk.id),projectId:serviceDesk.projectId,projectName:serviceDesk.projectName,projectKey:serviceDesk.projectKey},requestTypes:requestTypes.map(x=>({id:String(x.id),name:x.name,description:x.description||''})),organizations:organizations.map(x=>({id:String(x.id),name:x.name})),statuses,customerVisibleFields:fields,maxCustomColumns:MAX_CUSTOM_COLUMNS,maxExperiences:MAX_EXPERIENCES,config,licensing:licenseState(context)};});
+resolver.define('saveConfig',async({context,payload})=>{const projectId=context?.extension?.project?.id;if(!projectId)throw new Error('Missing project context.');if(!licenseState(context).active)throw new Error('An active Nuvriqo Portal+ subscription is required to change configuration.');const config=migrateConfig({version:CONFIG_VERSION,serviceDeskId:payload?.serviceDeskId,experiences:payload?.experiences,updatedAt:new Date().toISOString()});validate(config);await kvs.set(configKey(projectId),config);return config;});
+export const handler=resolver.getDefinitions();
