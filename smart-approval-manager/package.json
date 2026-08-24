@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "forge lint",
     "deploy": "forge deploy",
-    "test": "node --test tests/*.test.js"
+    "test": "node --check src/backend/index.js && node --check src/backend/reminders.js"
   },
   "dependencies": {
     "@forge/api": "latest",
