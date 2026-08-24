@@ -1,59 +1,18 @@
 import Resolver from '@forge/resolver';
-import api, { route } from '@forge/api';
-import { kvs } from '@forge/kvs';
-
-const resolver = new Resolver();
-const CONFIG_VERSION = 5;
-const configKey = (projectId) => `portalplus:config:${projectId}`;
-
-function projectIdFromContext(context) { return context?.extension?.project?.id || context?.extension?.serviceDesk?.projectId || null; }
-function licenseState(context) { const environment = String(context?.environmentType || '').toLowerCase(); if (environment !== 'production') return { active: true, testEnvironment: true }; return { active: context?.license?.active === true, testEnvironment: false }; }
-function defaultConfig() { return { version: CONFIG_VERSION, serviceDeskId: '', displayName: 'Service dashboard', subtitle: 'A clearer view of your support requests.', dashboard: { open: true, awaitingCustomer: false, awaitingSupport: false, recent: true }, audienceOrganizationIds: [], statusMapping: { awaitingCustomer: [], awaitingSupport: [] }, categories: [], requestColumns: [], updatedAt: null }; }
-function normalizeConfig(config) {
-  if (!config) return defaultConfig();
-  return {
-    version: CONFIG_VERSION,
-    serviceDeskId: String(config.serviceDeskId || ''),
-    displayName: String(config.displayName || 'Service dashboard').slice(0, 80),
-    subtitle: String(config.subtitle || 'A clearer view of your support requests.').slice(0, 140),
-    dashboard: { open: config.dashboard?.open !== false, awaitingCustomer: config.dashboard?.awaitingCustomer === true, awaitingSupport: config.dashboard?.awaitingSupport === true, recent: config.dashboard?.recent !== false },
-    audienceOrganizationIds: Array.isArray(config.audienceOrganizationIds) ? config.audienceOrganizationIds.map(String) : [],
-    statusMapping: { awaitingCustomer: Array.isArray(config.statusMapping?.awaitingCustomer) ? config.statusMapping.awaitingCustomer.map(String) : [], awaitingSupport: Array.isArray(config.statusMapping?.awaitingSupport) ? config.statusMapping.awaitingSupport.map(String) : [] },
-    categories: Array.isArray(config.categories) ? config.categories.slice(0, 12).map((category) => ({
-      id: String(category.id || ''),
-      name: String(category.name || 'Category'),
-      description: String(category.description || ''),
-      audienceOrganizationIds: Array.isArray(category.audienceOrganizationIds) ? category.audienceOrganizationIds.map(String) : [],
-      requestTypes: Array.isArray(category.requestTypes) ? category.requestTypes.map((rt) => ({ id: String(rt.id || ''), name: String(rt.name || 'Request') })) : []
-    })) : [],
-    requestColumns: Array.isArray(config.requestColumns) ? config.requestColumns.slice(0, 3).map((field) => ({ id: String(field.id || ''), name: String(field.name || field.id || '') })).filter((field) => field.id) : [],
-    updatedAt: config.updatedAt || null
-  };
-}
-async function requestPage(start = 0, limit = 100) { const response = await api.asUser().requestJira(route`/rest/servicedeskapi/request?start=${start}&limit=${limit}`, { headers: { Accept: 'application/json' } }); if (!response.ok) { const body = await response.text(); throw new Error(`Unable to load customer requests (${response.status}): ${body}`); } return response.json(); }
-async function currentCustomerOrganizations() { try { const response = await api.asUser().requestJira(route`/rest/servicedeskapi/organization?limit=100`, { headers: { Accept: 'application/json' } }); if (!response.ok) return []; const data = await response.json(); return Array.isArray(data?.values) ? data.values.map((item) => String(item.id)) : []; } catch (_) { return []; } }
-function hasAudience(config) { return (config.audienceOrganizationIds || []).length > 0 || (config.categories || []).some((category) => (category.audienceOrganizationIds || []).length > 0); }
-function matchesAudience(required, memberships) { return !required?.length || required.some((id) => memberships.has(String(id))); }
-function filterConfigForCustomer(config, memberships) { return { ...config, categories: (config.categories || []).filter((category) => matchesAudience(category.audienceOrganizationIds || [], memberships)) }; }
-resolver.define('health', async ({ context }) => ({ ok: true, app: 'nuvriqo-portal-plus', phase: 'marketplace-rc', configVersion: CONFIG_VERSION, licensing: licenseState(context) }));
-resolver.define('getDashboard', async ({ context }) => {
-  const projectId = projectIdFromContext(context);
-  const stored = projectId ? await kvs.get(configKey(projectId)) : null;
-  const config = normalizeConfig(stored);
-  const memberships = new Set(hasAudience(config) ? await currentCustomerOrganizations() : []);
-  if (!matchesAudience(config.audienceOrganizationIds, memberships)) return { requests: { values: [], size: 0, isLastPage: true }, config: defaultConfig(), licensing: licenseState(context), audienceAllowed: false };
-  const requests = await requestPage(0, 100);
-  return { requests, config: filterConfigForCustomer(config, memberships), licensing: licenseState(context), audienceAllowed: true, requestListTruncated: requests?.isLastPage !== true };
-});
-resolver.define('getMyRequests', async () => requestPage(0, 100));
-resolver.define('getExportRequests', async ({ context }) => {
-  if (!licenseState(context).active) throw new Error('An active Nuvriqo Portal+ subscription is required to export requests.');
-  const projectId = projectIdFromContext(context);
-  const config = normalizeConfig(projectId ? await kvs.get(configKey(projectId)) : null);
-  const memberships = new Set(hasAudience(config) ? await currentCustomerOrganizations() : []);
-  if (!matchesAudience(config.audienceOrganizationIds, memberships)) throw new Error('Portal+ is not enabled for this customer audience.');
-  const all = []; let start = 0; const limit = 100;
-  for (let page = 0; page < 10; page += 1) { const data = await requestPage(start, limit); const values = Array.isArray(data?.values) ? data.values : []; all.push(...values); if (data?.isLastPage === true || values.length < limit || all.length >= 1000) break; start += values.length; }
-  return { values: all.slice(0, 1000), truncated: all.length >= 1000 };
-});
-export const handler = resolver.getDefinitions();
+import api,{route} from '@forge/api';
+import {kvs} from '@forge/kvs';
+const resolver=new Resolver(),CONFIG_VERSION=6;
+const configKey=(projectId)=>`portalplus:config:${projectId}`;
+function projectIdFromContext(c){return c?.extension?.project?.id||c?.extension?.serviceDesk?.projectId||null;}
+function licenseState(c){const e=String(c?.environmentType||'').toLowerCase();if(e!=='production')return{active:true,testEnvironment:true};return{active:c?.license?.active===true,testEnvironment:false};}
+function defaultExperience(){return{id:'default',name:'Default experience',displayName:'Service dashboard',subtitle:'A clearer view of your support requests.',audienceOrganizationIds:[],dashboard:{open:true,awaitingCustomer:false,awaitingSupport:false,recent:true,actionCentre:true},statusMapping:{awaitingCustomer:[],awaitingSupport:[]},categories:[],requestColumns:[],announcements:[],links:[]};}
+function normalizeConfig(c){if(!c)return{version:CONFIG_VERSION,serviceDeskId:'',experiences:[]};if(Array.isArray(c.experiences))return{...c,version:CONFIG_VERSION};return{version:CONFIG_VERSION,serviceDeskId:String(c.serviceDeskId||''),experiences:[{...defaultExperience(),displayName:c.displayName||'Service dashboard',subtitle:c.subtitle||'A clearer view of your support requests.',audienceOrganizationIds:c.audienceOrganizationIds||[],dashboard:c.dashboard||defaultExperience().dashboard,statusMapping:c.statusMapping||defaultExperience().statusMapping,categories:c.categories||[],requestColumns:c.requestColumns||[]}]};}
+async function requestPage(start=0,limit=100){const r=await api.asUser().requestJira(route`/rest/servicedeskapi/request?start=${start}&limit=${limit}`,{headers:{Accept:'application/json'}});if(!r.ok){const body=await r.text();throw new Error(`Unable to load customer requests (${r.status}): ${body}`);}return r.json();}
+async function currentCustomerOrganizations(){try{const r=await api.asUser().requestJira(route`/rest/servicedeskapi/organization?limit=100`,{headers:{Accept:'application/json'}});if(!r.ok)return[];const d=await r.json();return Array.isArray(d.values)?d.values.map(x=>String(x.id)):[];}catch(_){return[];}}
+function chooseExperience(experiences,memberships){const memberSet=new Set(memberships.map(String));const specific=experiences.find(e=>(e.audienceOrganizationIds||[]).some(id=>memberSet.has(String(id))));return specific||experiences.find(e=>!(e.audienceOrganizationIds||[]).length)||null;}
+function categoryAllowed(category,memberships){const required=(category?.audienceOrganizationIds||[]).map(String);if(!required.length)return true;const set=new Set(memberships.map(String));return required.some(id=>set.has(id));}
+async function contextData(context){const projectId=projectIdFromContext(context),config=normalizeConfig(projectId?await kvs.get(configKey(projectId)):null),memberships=await currentCustomerOrganizations(),experience=chooseExperience(config.experiences||[],memberships);if(!experience)return{config,experience:null,memberships};return{config,experience:{...experience,categories:(experience.categories||[]).filter(c=>categoryAllowed(c,memberships))},memberships};}
+resolver.define('health',async({context})=>({ok:true,app:'nuvriqo-portal-plus',phase:'multi-experience',configVersion:CONFIG_VERSION,licensing:licenseState(context)}));
+resolver.define('getDashboard',async({context})=>{const{config,experience}=await contextData(context);if(!experience)return{requests:{values:[],size:0,isLastPage:true},config:{serviceDeskId:config.serviceDeskId},experience:null,licensing:licenseState(context),audienceAllowed:false};const requests=await requestPage(0,100);return{requests,config:{serviceDeskId:config.serviceDeskId},experience,licensing:licenseState(context),audienceAllowed:true};});
+resolver.define('getExportRequests',async({context})=>{if(!licenseState(context).active)throw new Error('An active Nuvriqo Portal+ subscription is required to export requests.');const{experience}=await contextData(context);if(!experience)throw new Error('Portal+ is not enabled for this customer audience.');const all=[];let start=0;for(let page=0;page<10;page++){const d=await requestPage(start,100),values=Array.isArray(d.values)?d.values:[];all.push(...values);if(d.isLastPage===true||values.length<100||all.length>=1000)break;start+=values.length;}return{values:all.slice(0,1000),truncated:all.length>=1000,requestColumns:experience.requestColumns||[]};});
+export const handler=resolver.getDefinitions();
