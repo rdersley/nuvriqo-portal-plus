@@ -1,7 +1,9 @@
 app:
-  id: ari:cloud:ecosystem::app/REPLACE_AFTER_FORGE_REGISTER
+  id: ari:cloud:ecosystem::app/64448e4c-1a3a-4dd4-a8e7-c198c6d5eaad
   runtime:
-    name: nodejs22.x
+    name: nodejs24.x
+    memoryMB: 256
+    architecture: arm64
 
 modules:
   jira:issuePanel:
