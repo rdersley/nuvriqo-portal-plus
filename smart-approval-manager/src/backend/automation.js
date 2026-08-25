@@ -15,7 +15,7 @@ async function json(response) {
   return body ? JSON.parse(body) : null;
 }
 
-async function queryPrefix(prefix, max = 100) {
+async function queryPrefix(prefix, max = 200) {
   let cursor;
   const out = [];
   do {
@@ -48,33 +48,25 @@ async function transitionIssue(issueKey, transitionId) {
 async function addParticipant(issueKey, accountId) {
   try {
     await json(await api.asApp().requestJira(route`/rest/servicedeskapi/request/${issueKey}/participant`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ accountIds: [accountId] }),
     }));
-  } catch (error) {
-    console.warn('Automatic approval: unable to add participant', error?.message || error);
-  }
+  } catch (error) { console.warn('Automatic approval: unable to add participant', error?.message || error); }
 }
 
 async function addPublicComment(issueKey, text) {
   try {
     await json(await api.asApp().requestJira(route`/rest/servicedeskapi/request/${issueKey}/comment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ body: text, public: true }),
     }));
-  } catch (error) {
-    console.warn('Automatic approval: unable to add comment', error?.message || error);
-  }
+  } catch (error) { console.warn('Automatic approval: unable to add comment', error?.message || error); }
 }
 
 function values(value) {
   if (value == null) return [];
   if (Array.isArray(value)) return value.flatMap(values);
-  if (typeof value === 'object') {
-    return [value.value, value.name, value.id, value.key, value.displayName].filter((v) => v != null).map(String);
-  }
+  if (typeof value === 'object') return [value.value, value.name, value.id, value.key, value.displayName].filter((v) => v != null).map(String);
   return [String(value)];
 }
 
@@ -100,69 +92,69 @@ export async function run(event) {
   const issueKey = event?.issue?.key;
   const projectId = String(event?.issue?.fields?.project?.id || '');
   if (!issueKey || !projectId) return;
-
   const settings = (await kvs.get(configKey(projectId))) || {};
   const rules = Array.isArray(settings.autoRules) ? settings.autoRules : [];
   if (!rules.length) return;
 
   const issue = await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}?fields=*all`));
   const existingRows = await queryPrefix(`issue#${issueKey}#`, 200);
-  const existingPending = existingRows.map((r) => r.value).filter((r) => r?.status === 'pending');
+  const existing = existingRows.map((r) => r.value);
 
   for (const rule of rules) {
     if (!ruleMatches(issue, rule)) continue;
-    const approvers = Array.isArray(rule.approvers) ? rule.approvers : [];
-    let createdAny = false;
+    const ruleId = clean(rule.id || rule.name, 200);
+    if (existing.some((r) => r?.ruleId === ruleId && ['pending', 'approved', 'declined'].includes(r?.status))) continue;
 
-    for (const approver of approvers) {
+    const requestedApprovers = Array.isArray(rule.approvers) ? rule.approvers : [];
+    const canonicalApprovers = [];
+    const seen = new Set();
+    for (const approver of requestedApprovers.slice(0, 20)) {
       const accountId = clean(approver?.accountId, 200);
-      if (!accountId) continue;
-      if (existingPending.some((r) => r.approver?.accountId === accountId)) continue;
+      if (!accountId || seen.has(accountId)) continue;
+      seen.add(accountId);
+      try {
+        const canonical = await json(await api.asApp().requestJira(route`/rest/api/3/user?accountId=${accountId}`));
+        if (canonical?.accountId && canonical.active !== false) canonicalApprovers.push(canonical);
+      } catch (error) { console.warn('Automatic approval: unable to resolve approver', error?.message || error); }
+    }
+    if (!canonicalApprovers.length) continue;
 
-      const canonical = await json(await api.asApp().requestJira(route`/rest/api/3/user?accountId=${accountId}`));
-      if (!canonical?.accountId || canonical.active === false) continue;
+    const groupId = uid();
+    const approvalMode = rule.approvalMode === 'any' ? 'any' : 'all';
+    const reminderHours = Math.min(720, Math.max(1, Number(rule.reminderHours || settings.reminderHours || 24)));
+    const createdRecords = [];
 
+    for (const canonical of canonicalApprovers) {
       const createdAt = nowIso();
-      const reminderHours = Math.min(720, Math.max(1, Number(rule.reminderHours || settings.reminderHours || 24)));
       const record = {
-        id: uid(),
-        issueKey,
-        issueId: issue.id,
-        projectId,
-        projectKey: issue.fields.project?.key,
-        summary: clean(issue.fields.summary, 500),
-        issueStatus: clean(issue.fields.status?.name, 200),
+        id: uid(), groupId, approvalMode, groupSize: canonicalApprovers.length,
+        issueKey, issueId: issue.id, projectId, projectKey: issue.fields.project?.key,
+        summary: clean(issue.fields.summary, 500), issueStatus: clean(issue.fields.status?.name, 200),
         approver: { accountId: canonical.accountId, displayName: clean(canonical.displayName, 200) },
-        requestedBy: { accountId: 'automation' },
+        requestedBy: { accountId: 'automation' }, source: 'automation',
         message: clean(rule.message || 'Please review and approve this request.', 2000),
-        status: 'pending',
-        createdAt,
-        updatedAt: createdAt,
-        reminderHours,
-        reminderCount: 0,
+        status: 'pending', createdAt, updatedAt: createdAt, reminderHours, reminderCount: 0,
         nextReminderAt: new Date(Date.now() + reminderHours * 3600000).toISOString(),
-        ruleId: clean(rule.id || rule.name, 200),
-        ruleName: clean(rule.name, 200),
+        ruleId, ruleName: clean(rule.name, 200),
         ruleTransitionIds: {
-          approved: clean(rule.approveTransitionId, 100),
-          declined: clean(rule.declineTransitionId, 100),
+          approved: clean(rule.approveTransitionId || settings.approveTransitionId, 100),
+          declined: clean(rule.declineTransitionId || settings.declineTransitionId, 100),
         },
         events: [{ type: 'requested-automatically', at: createdAt, by: 'automation', rule: clean(rule.name, 200) }],
       };
-
       if (settings.autoAddParticipant !== false) await addParticipant(issueKey, canonical.accountId);
       await saveApproval(record);
-      existingPending.push(record);
-      createdAny = true;
+      createdRecords.push(record);
+      existing.push(record);
     }
 
-    if (createdAny) {
-      await addPublicComment(issueKey, `Approval requested automatically${rule.name ? ` by rule “${clean(rule.name, 200)}”` : ''}. Approvers can review it in My Approvals.`);
-      const pendingTransitionId = clean(rule.pendingTransitionId || settings.pendingTransitionId, 100);
-      if (pendingTransitionId) {
-        try { await transitionIssue(issueKey, pendingTransitionId); }
-        catch (error) { console.warn('Automatic approval pending transition failed', error?.message || error); }
-      }
+    const names = createdRecords.map((r) => r.approver.displayName).join(', ');
+    const modeText = createdRecords.length > 1 ? (approvalMode === 'all' ? ' All approvers must approve.' : ' Any one approver can approve.') : '';
+    await addPublicComment(issueKey, `Approval requested automatically${rule.name ? ` by rule “${clean(rule.name, 200)}”` : ''} from ${names}.${modeText} Approvers can review it in My Approvals.`);
+    const pendingTransitionId = clean(rule.pendingTransitionId || settings.pendingTransitionId, 100);
+    if (pendingTransitionId) {
+      try { await transitionIssue(issueKey, pendingTransitionId); }
+      catch (error) { console.warn('Automatic approval pending transition failed', error?.message || error); }
     }
   }
 }
