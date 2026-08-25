@@ -1,143 +1,231 @@
 # Nuvriqo Portal+ — Final Acceptance Test
 
-Run this only after the Marketplace release candidate has passed build, lint, release and dependency checks. This is intended to be the single comprehensive human acceptance pass before production deployment and Marketplace submission.
+Run this only after the expanded Marketplace release candidate has passed build, release, dependency and remote Forge QA checks. This is intended to be the single comprehensive human acceptance pass before production deployment and Marketplace submission.
 
-## Test environments
+## Test setup
 
-Use a non-production Jira Service Management Cloud site and Forge development or staging environment. Test with an administrator/agent account and at least two portal-only customer accounts with different request visibility. Where audience rules are tested, put only one customer in the selected JSM organization.
+Use a non-production Jira Service Management Cloud site with:
 
-## Installation / upgrade
+- one administrator/agent account;
+- at least two portal-only customers;
+- at least two JSM customer organizations;
+- requests in several customer-visible statuses;
+- enough visible requests to exercise filtering/pagination;
+- at least three request types.
+
+For the multi-experience test, place Customer A in Organization A and Customer B in Organization B. Keep a third/fallback scenario available where useful.
+
+## Installation / technical gate
 
 - App installs/upgrades with only the documented scopes.
-- Admin page opens under JSM project settings.
-- Portal+ renders on the portal for a portal-only customer.
-- No browser-visible resolver/CSP errors appear.
+- Admin page opens under JSM project/space settings.
+- Portal+ renders for a portal-only customer.
+- No resolver, CSP or JavaScript errors appear in the browser console.
 - Registered manifest has Marketplace licensing enabled while retaining the real Forge app ID.
+- `npm test`, production dependency audit and `forge lint` pass on the exact acceptance commit.
 
-## Fresh configuration
+## Discovery
 
-- Open Portal+ on a JSM project with no Portal+ configuration.
 - Service desk is discovered automatically.
 - Request types are discovered automatically.
 - Workflow statuses are discovered automatically.
-- Organizations populate only from the current service desk where organizations exist.
+- Organizations come from the current service desk.
 - Customer-visible request fields are discovered automatically.
-- Fresh defaults do not require Jira numeric IDs.
-- Awaiting customer/support are disabled until an administrator maps statuses.
-- Default category is created from the discovered request types.
+- Normal setup does not require Jira numeric IDs.
 
-## Admin configuration
+## Multi-experience builder
 
-- Change display name.
-- Enable/disable each dashboard module.
+Create at least three experiences:
+
+1. Organization A branded experience.
+2. Organization B branded experience.
+3. Fallback experience with no organization audience.
+
+Verify:
+
+- experiences can be added;
+- experiences can be duplicated;
+- experience names/headings persist after save/reload;
+- organization audiences persist;
+- the fallback has no organization selection;
+- duplicate or invalid configuration is rejected where applicable;
+- unsaved-change status appears and clears after publish;
+- the correct saved/published timestamp appears.
+
+## Branding
+
+Configure different branding for Organization A and B:
+
+- brand name;
+- accent colour;
+- dashboard heading;
+- intro text;
+- hero title/message;
+- support label and HTTPS support URL;
+- Powered by Nuvriqo Portal+ on/off;
+- mobile app display name;
+- dedicated mobile/white-label logo/icon references where desired.
+
+Verify:
+
+- accent colour changes the Service Hub treatment;
+- generated web brand mark reflects the selected brand without external image egress;
+- brand name renders correctly;
+- hero content appears only when configured;
+- support button appears only when configured and navigates correctly;
+- Powered by visibility follows the setting;
+- Organization A never receives Organization B branding and vice versa.
+
+## Admin preview
+
+Before publishing each experience:
+
+- open Preview;
+- verify the modal is visual, not a text alert;
+- verify heading, intro, brand name, accent colour and generated brand treatment;
+- verify configured dashboard cards;
+- verify Action Centre preview;
+- verify service tiles and request-type buttons;
+- verify announcements;
+- verify useful-resource cards;
+- verify mobile identity summary;
+- close with the Close control;
+- close with Escape.
+
+## Service categories and audience rules
+
+- Add at least two categories to Organization A.
+- Assign request types to each category.
+- Add one category visible only to Organization A.
+- Add another category with no category audience.
+- Save and reload.
+
+Verify Customer A sees both eligible categories, while a customer outside the category audience does not see the restricted category. Category audience rules must never broaden Jira request visibility.
+
+## Announcements and resources
+
+- Add information, warning and success announcements.
+- Confirm text/style renders sensibly in the customer Service Hub.
+- Add HTTPS resources such as documentation/status pages.
+- Confirm resources render and navigate correctly.
+- Confirm invalid/non-HTTPS resource URLs are rejected/removed according to validation rules.
+
+## Status mapping and Action Centre
+
 - Map one or more Awaiting customer statuses.
 - Map one or more Awaiting support statuses.
-- Verify the same status cannot be saved in both mappings.
-- Add at least two service categories.
-- Assign request types to categories.
-- Reorder categories and confirm order persists.
-- Verify duplicate visible category names are rejected.
-- Select up to three additional customer-visible request fields.
-- Verify Portal+ prevents selecting more than three additional fields.
-- Select an organization audience and save.
-- Verify unsaved-change indicator appears and clears after save.
-- Verify Restore defaults changes the form locally but does not persist until Save configuration is used.
-- Refresh/reopen the admin page and confirm all configuration persists.
+- Enable both dashboard counters and Action Centre.
+- Verify the same status cannot be used in both mappings.
 
-## Organization audience
+Using a customer with matching requests:
 
-Using two portal-only customers:
+- Awaiting you counter matches the configured customer mapping;
+- Awaiting support counter matches the configured support mapping;
+- Action Centre lists actual requests awaiting the customer;
+- Action Centre items show request key/status and open the native JSM request;
+- Action Centre is hidden when there are no matching actions or the module is disabled.
 
-- Customer in a selected audience organization sees Portal+.
-- Customer outside all selected audience organizations does not see Portal+.
-- Removing all audience selections makes Portal+ available to every customer who already has JSM access.
-- Audience membership never causes a customer to see a Jira request they cannot otherwise access.
+## Customer request explorer
 
-## Customer dashboard
+Verify:
 
-Using a portal-only customer in the allowed audience:
+- only requests visible to the signed-in portal customer are returned;
+- Open count is sensible;
+- Visible count is sensible;
+- request list shows key, summary/request type and customer-visible status;
+- up to three configured customer-visible fields render;
+- clicking a request opens the native JSM request;
+- customer with no requests gets a useful empty state.
 
-- Dashboard loads without Jira product/agent access.
-- Only requests visible to that customer are returned.
-- Open request count is sensible.
-- Awaiting customer/support counts match configured mappings.
-- Request list displays key, summary/request type and customer-visible status.
-- Selected additional customer-visible fields appear as columns and show sensible values.
-- Clicking a request opens the customer's JSM request.
-- Quick-action categories appear in configured order.
-- Clicking a quick action opens the correct existing JSM request form.
-- A customer with no requests sees a useful empty state.
+Exercise:
 
-## Request search/filter/sort/pagination
-
-With enough requests to exercise the controls:
-
-- Search by issue key.
-- Search by summary text.
-- Filter by status.
-- Filter by request type.
-- Filter by Last 7 days.
-- Filter by Last 30 days.
-- Filter by Last 90 days.
-- Filter by Last 12 months.
-- Clear the date filter back to Any date.
-- Combine search and filters.
-- Sort newest first.
-- Sort oldest first.
-- Sort by key.
-- Move to the next page and back using Previous/Next where more than ten matches exist.
-- Changing a filter resets pagination to the first page.
-- Empty filter results display a useful message.
+- search by request key;
+- search by summary;
+- status filter;
+- request-type filter;
+- Last 7/30/90 days and Last 12 months;
+- Any date reset;
+- combined filters;
+- newest/oldest/key sorting;
+- Previous/Next pagination with >10 matching requests;
+- pagination resets when filters change;
+- empty filter results show a useful message.
 
 ## CSV export
 
-- Export with no visible requests produces a useful message instead of a meaningless file.
-- Export with visible requests downloads CSV.
-- CSV contains only requests visible to the current customer.
+- No visible requests produces a useful message.
+- Visible requests download CSV.
+- Export contains only requests visible to the customer.
 - Key, summary, request type, status, created and updated values are sensible.
-- Configured additional request fields are included in the export.
-- Quotes/newlines in text do not corrupt CSV structure.
-- Values beginning with spreadsheet-formula characters do not execute as formulas when the export is opened in a spreadsheet.
-- Large export stops at the documented V1 limit of 1,000 visible requests.
+- Configured customer-visible columns are included.
+- Quotes/newlines do not corrupt the CSV.
+- Spreadsheet-formula-leading characters are neutralized.
+- Export stops at the documented 1,000-request limit.
 
 ## Permission isolation
 
-Use a second portal-only customer who must not see the first customer's private requests:
+Using customers with different visibility:
 
-- Portal+ does not expose inaccessible requests.
-- Search does not expose inaccessible requests.
-- Dashboard counts do not include inaccessible requests.
-- Configurable columns do not expose hidden/non-customer fields.
+- Customer A cannot see Customer B's private requests.
+- Search/filtering cannot expose inaccessible requests.
+- Counters do not include inaccessible requests.
+- Action Centre does not include inaccessible requests.
 - CSV does not include inaccessible requests.
+- organization/experience selection changes presentation only, not Jira authorization.
+
+## Shared client contract / mobile readiness
+
+Invoke the internal `getClientContract` through the supported Forge test surface and verify the selected customer receives contract version 1 containing:
+
+- correct selected experience ID/name;
+- service desk ID;
+- branding configuration;
+- heading/subtitle;
+- eligible services/request types;
+- announcements;
+- resources;
+- dashboard module configuration;
+- dashboard counts;
+- customer action items;
+- normalized request summaries;
+- licence state.
+
+Confirm the contract changes appropriately for Organization A vs Organization B and contains no requests inaccessible to that customer.
+
+This contract is not yet a public native-mobile internet endpoint; no external mobile authentication/token path should be considered approved by this test.
 
 ## Licensing
 
-In development/staging, use Forge's supported license test mechanism:
+Using Forge-supported licence testing:
 
-- Active/trial license: normal Portal+ configuration and premium features work.
-- Inactive license: customer request visibility remains available in reduced mode, premium quick actions/export are unavailable, and admin configuration cannot be changed.
-- Inactive-license state gives a readable customer/admin message rather than an unhandled exception.
-- Returning to an active license restores normal functionality without losing configuration.
+- active/trial licence: normal configuration and premium features work;
+- inactive production licence: admin cannot publish changes;
+- export/premium navigation behaves according to the release policy;
+- readable licence messaging appears rather than unhandled errors;
+- reactivation restores features without configuration loss.
 
 ## Upgrade / migration
 
-- Existing development configuration is retained after upgrading to the RC.
-- Configuration migration to the current schema completes automatically.
-- Existing category/status mappings do not disappear unexpectedly.
-- New request-column configuration can be added after migration.
+- Existing pre-V7 configuration migrates automatically into an Experience.
+- Existing categories/status mappings/request columns are retained where valid.
+- New branding fields receive safe defaults.
+- Existing customers continue to receive a usable fallback experience.
 
-## Responsive / UX
+## Responsive / mobile-width web UX
 
-- Portal+ remains usable on normal desktop width.
-- Portal+ remains usable at narrow/mobile width.
-- Extra custom columns collapse sensibly at narrow widths.
-- No internal iframe scrollbar clips critical content.
-- Loading, empty and error states are readable.
-- Atlassian's native portal/request controls remain usable below Portal+.
+- Desktop rendering is clean.
+- Tablet/narrow width remains usable.
+- Phone-width layout remains usable.
+- Brand mark/heading/buttons do not overlap.
+- cards and service tiles collapse sensibly.
+- request custom columns collapse sensibly.
+- preview remains usable at narrow width.
+- no internal iframe scrollbar clips critical controls.
+- native JSM portal controls remain usable beneath Portal+.
 
 ## Release commands
 
-Before signing off the RC:
+Before sign-off:
 
 ```powershell
 npm install
@@ -146,4 +234,4 @@ npm audit --omit=dev --audit-level=high
 forge lint
 ```
 
-Then deploy the exact tested commit to staging and complete this checklist. Production deployment and Marketplace submission should use that approved commit without additional feature changes. Any code change after acceptance requires the affected scenarios plus the automated release checks to be repeated.
+Deploy the exact tested commit to staging and complete this checklist. Production deployment and Marketplace submission must use the accepted commit without additional feature changes. Any subsequent code change requires the affected acceptance scenarios plus automated release checks to be repeated.
