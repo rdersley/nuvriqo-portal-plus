@@ -7,7 +7,7 @@ const approvalKey = (id) => `approval#${id}`;
 const approverIndexKey = (accountId, createdAt, id) => `approver#${accountId}#${createdAt}#${id}`;
 const issueIndexKey = (issueKey, createdAt, id) => `issue#${issueKey}#${createdAt}#${id}`;
 const configKey = (projectId) => `config#${projectId}`;
-const clean = (value, max = 1000) => String(value || '').trim().slice(0, max);
+const clean = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
 const nowIso = () => new Date().toISOString();
 
 async function json(response) {
@@ -40,22 +40,51 @@ async function saveApproval(record) {
 async function addPublicComment(issueKey, text) {
   try {
     await json(await api.asApp().requestJira(route`/rest/servicedeskapi/request/${issueKey}/comment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ body: text, public: true }),
     }));
-  } catch (error) {
-    console.warn('Unable to add JSM public comment', error?.message || error);
-  }
+  } catch (error) { console.warn('Unable to add JSM public comment', error?.message || error); }
 }
 
 async function transitionIssue(issueKey, transitionId) {
   if (!transitionId) return;
   await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ transition: { id: String(transitionId) } }),
   }));
+}
+
+async function groupRecords(record) {
+  const rows = await queryPrefix(`issue#${record.issueKey}#`, 200);
+  const all = rows.map((r) => r.value);
+  if (!record.groupId) return [record];
+  return all.filter((r) => r?.groupId === record.groupId);
+}
+
+function groupOutcome(records, mode) {
+  const active = records.filter((r) => r.status !== 'cancelled');
+  const approved = active.filter((r) => r.status === 'approved').length;
+  const declined = active.filter((r) => r.status === 'declined').length;
+  const pending = active.filter((r) => r.status === 'pending').length;
+  if (mode === 'any') {
+    if (approved > 0) return 'approved';
+    if (pending === 0 && declined > 0) return 'declined';
+    return 'pending';
+  }
+  if (declined > 0) return 'declined';
+  if (pending === 0 && approved === active.length && active.length > 0) return 'approved';
+  return 'pending';
+}
+
+async function closeRedundantPending(records, winnerId, outcome) {
+  const at = nowIso();
+  for (const sibling of records) {
+    if (sibling.id === winnerId || sibling.status !== 'pending') continue;
+    sibling.status = outcome === 'approved' ? 'not-required' : 'cancelled';
+    sibling.updatedAt = at;
+    sibling.events = [...(sibling.events || []), { type: sibling.status, at, by: 'system', reason: `Group resolved as ${outcome}` }];
+    await saveApproval(sibling);
+  }
 }
 
 resolver.define('getMyApprovals', async ({ payload, context }) => {
@@ -79,9 +108,7 @@ resolver.define('decideApproval', async ({ payload, context }) => {
 
   const settings = (await kvs.get(configKey(record.projectId))) || {};
   const reason = clean(payload?.reason, 2000);
-  if (decision === 'declined' && settings.requireDeclineReason && !reason) {
-    throw new Error('A decline reason is required.');
-  }
+  if (decision === 'declined' && settings.requireDeclineReason && !reason) throw new Error('A decline reason is required.');
 
   const at = nowIso();
   record.status = decision;
@@ -90,30 +117,39 @@ resolver.define('decideApproval', async ({ payload, context }) => {
   record.updatedAt = at;
   record.events = [...(record.events || []), { type: decision, at, by: context.accountId, reason }];
   await saveApproval(record);
+  await addPublicComment(record.issueKey, `${record.approver.displayName} ${decision === 'approved' ? 'approved' : 'declined'} this request${reason ? `: ${reason}` : '.'}`);
 
-  await addPublicComment(
-    record.issueKey,
-    `${record.approver.displayName} ${decision === 'approved' ? 'approved' : 'declined'} this request${reason ? `: ${reason}` : '.'}`
-  );
+  const records = await groupRecords(record);
+  const mode = record.approvalMode === 'any' ? 'any' : 'all';
+  const outcome = groupOutcome(records, mode);
+  record.groupOutcome = outcome;
+  record.updatedAt = nowIso();
+  await saveApproval(record);
 
-  const transitionId = decision === 'approved'
-    ? (record.ruleTransitionIds?.approved || settings.approveTransitionId)
-    : (record.ruleTransitionIds?.declined || settings.declineTransitionId);
+  if (outcome !== 'pending') {
+    if (mode === 'any' && outcome === 'approved') await closeRedundantPending(records, record.id, outcome);
+    if (mode === 'all' && outcome === 'declined') await closeRedundantPending(records, record.id, outcome);
 
-  if (transitionId) {
-    try {
-      await transitionIssue(record.issueKey, transitionId);
-      record.transitionApplied = true;
-      record.events = [...record.events, { type: 'transition-applied', at: nowIso(), by: 'system', transitionId: String(transitionId) }];
-    } catch (error) {
-      record.transitionApplied = false;
-      record.transitionError = clean(error?.message || error, 500);
-      record.events = [...record.events, { type: 'transition-failed', at: nowIso(), by: 'system', error: record.transitionError }];
+    const transitionId = outcome === 'approved'
+      ? clean(record.ruleTransitionIds?.approved || settings.approveTransitionId, 100)
+      : clean(record.ruleTransitionIds?.declined || settings.declineTransitionId, 100);
+    if (transitionId) {
+      try {
+        await transitionIssue(record.issueKey, transitionId);
+        record.transitionApplied = true;
+        record.events = [...record.events, { type: 'transition-applied', at: nowIso(), by: 'system', transitionId, groupOutcome: outcome }];
+      } catch (error) {
+        record.transitionApplied = false;
+        record.transitionError = clean(error?.message || error, 500);
+        record.events = [...record.events, { type: 'transition-failed', at: nowIso(), by: 'system', error: record.transitionError }];
+      }
+      record.updatedAt = nowIso();
+      await saveApproval(record);
     }
-    record.updatedAt = nowIso();
-    await saveApproval(record);
+    await addPublicComment(record.issueKey, outcome === 'approved'
+      ? `Approval complete. ${mode === 'all' && records.length > 1 ? 'All required approvers have approved.' : 'The required approval has been granted.'}`
+      : `Approval declined. ${mode === 'all' && records.length > 1 ? 'A required approver declined the request.' : 'The approval requirement was not met.'}`);
   }
-
   return record;
 });
 
