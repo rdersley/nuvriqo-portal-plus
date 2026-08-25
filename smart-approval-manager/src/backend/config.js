@@ -61,6 +61,29 @@ resolver.define('getSettings', async ({ payload }) => {
   return { ...defaults, ...((await kvs.get(configKey(projectId))) || {}) };
 });
 
+resolver.define('getRuleBuilderMetadata', async ({ payload }) => {
+  const projectId = clean(payload?.projectId, 100);
+  if (!projectId) throw new Error('Project context is required.');
+  await assertProjectAdmin(projectId);
+  const fields = await json(await api.asUser().requestJira(route`/rest/api/3/field`));
+  return {
+    fields: (fields || []).filter((f) => f?.id && f?.name).map((f) => ({ id: f.id, name: f.name })).sort((a, b) => a.name.localeCompare(b.name)),
+  };
+});
+
+resolver.define('searchRuleApprovers', async ({ payload }) => {
+  const projectId = clean(payload?.projectId, 100);
+  const query = clean(payload?.query, 100);
+  if (!projectId) throw new Error('Project context is required.');
+  await assertProjectAdmin(projectId);
+  if (query.length < 2) return [];
+  const result = await json(await api.asUser().requestJira(route`/rest/api/3/user/picker?query=${query}&maxResults=20&showAvatar=true`));
+  return (result?.users || []).filter((u) => u.accountId && u.active !== false).map((u) => ({
+    accountId: u.accountId,
+    displayName: clean(u.displayName, 200),
+  }));
+});
+
 resolver.define('saveSettings', async ({ payload }) => {
   const projectId = clean(payload?.projectId, 100);
   if (!projectId) throw new Error('Project context is required.');
