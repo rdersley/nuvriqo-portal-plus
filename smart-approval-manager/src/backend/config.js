@@ -16,9 +16,7 @@ async function assertProjectAdmin(projectId) {
   const permissions = await json(await api.asUser().requestJira(
     route`/rest/api/3/mypermissions?projectId=${projectId}&permissions=ADMINISTER_PROJECTS`
   ));
-  if (!permissions?.permissions?.ADMINISTER_PROJECTS?.havePermission) {
-    throw new Error('Project administrator permission is required.');
-  }
+  if (!permissions?.permissions?.ADMINISTER_PROJECTS?.havePermission) throw new Error('Project administrator permission is required.');
 }
 
 function cleanRules(rules) {
@@ -27,6 +25,7 @@ function cleanRules(rules) {
     id: clean(rule?.id || `rule-${index + 1}`, 100),
     name: clean(rule?.name || `Rule ${index + 1}`, 200),
     enabled: rule?.enabled !== false,
+    approvalMode: rule?.approvalMode === 'any' ? 'any' : 'all',
     conditions: (Array.isArray(rule?.conditions) ? rule.conditions : []).slice(0, 10).map((c) => ({
       fieldId: clean(c?.fieldId, 200),
       operator: ['equals', 'notEquals', 'contains', 'isEmpty', 'notEmpty'].includes(c?.operator) ? c.operator : 'equals',
@@ -48,6 +47,7 @@ const defaults = {
   reminderHours: 24,
   autoAddParticipant: true,
   requireDeclineReason: true,
+  defaultApprovalMode: 'all',
   pendingTransitionId: '',
   approveTransitionId: '',
   declineTransitionId: '',
@@ -70,6 +70,7 @@ resolver.define('saveSettings', async ({ payload }) => {
     reminderHours: Math.min(720, Math.max(1, Number(incoming.reminderHours || 24))),
     autoAddParticipant: incoming.autoAddParticipant !== false,
     requireDeclineReason: incoming.requireDeclineReason !== false,
+    defaultApprovalMode: incoming.defaultApprovalMode === 'any' ? 'any' : 'all',
     pendingTransitionId: clean(incoming.pendingTransitionId, 100),
     approveTransitionId: clean(incoming.approveTransitionId, 100),
     declineTransitionId: clean(incoming.declineTransitionId, 100),
