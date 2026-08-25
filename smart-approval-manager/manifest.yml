@@ -27,7 +27,7 @@ modules:
     - key: smart-approval-portal-summary
       resource: portal-summary
       resolver:
-        function: resolver
+        function: portal-resolver
       render: native
       unlicensedAccess:
         - customer
@@ -37,7 +37,7 @@ modules:
     - key: smart-approval-my-approvals
       resource: portal-approvals
       resolver:
-        function: resolver
+        function: portal-resolver
       render: native
       title: My Approvals
       viewportSize: large
@@ -48,6 +48,8 @@ modules:
   function:
     - key: resolver
       handler: backend/index.handler
+    - key: portal-resolver
+      handler: backend/portal.handler
     - key: reminder-worker
       handler: backend/reminders.run
       timeoutSeconds: 120
