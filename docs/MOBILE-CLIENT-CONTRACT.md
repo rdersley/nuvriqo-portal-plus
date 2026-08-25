@@ -1,61 +1,48 @@
 # Portal+ shared client contract
 
-Status: **V1 brand-platform contract**
+Status: **V11 / Contract V3 — mobile-ready Forge contract**
 
 Portal+ uses one customer Experience model as the source of truth for web, mobile and future white-label clients.
 
 ## Purpose
+The customer experience must not be reconfigured independently in each client. A single Experience controls audience organizations, branding, dashboard modules, status mappings, customer-visible columns, service categories/request types, announcements, resources, support identity and mobile display identity.
 
-The customer experience must not be reconfigured independently in each client. A single Experience controls:
+## Runtime contract V3
+The Forge portal resolver exposes `getClientContract` plus a dedicated `getMobileBootstrap` interface. Contract V3 contains:
 
-- audience organizations;
-- brand name and logo;
-- accent colour;
-- dashboard heading and introduction;
-- hero title/message;
-- support label/link;
-- Portal+ attribution visibility;
-- mobile display name and icon reference;
-- dashboard modules;
-- Awaiting customer/support mappings;
-- customer-visible request columns;
-- service categories and request types;
-- announcements;
-- useful resources.
+- resolved `experienceId`, `experienceName` and `serviceDeskId`;
+- configuration revision and deterministic routing metadata;
+- brand/mobile identity;
+- headings, announcements, resources and service catalogue;
+- dashboard module configuration and counts;
+- Action Centre items requiring customer attention;
+- normalized customer-visible request summaries;
+- mobile navigation model for Home, Actions, Requests, Create and Resources;
+- onboarding/authentication metadata;
+- notification capability/topics contract;
+- explicit capability flags and licence state.
 
-## Runtime contract
+All customer request information continues to be obtained through Jira/JSM customer context with `api.asUser()`. Portal+ audience configuration selects presentation/branding; it does not grant Jira request access.
 
-The Forge portal resolver exposes `getClientContract` for Portal+ clients running inside the current Forge/JSM trust boundary. Contract version 1 returns:
-
-- `experienceId`, `experienceName`, `serviceDeskId`;
-- `branding`;
-- `content.heading`, `content.subtitle`, `content.announcements`, `content.resources`, `content.services`;
-- `dashboard.modules`;
-- `dashboard.counts`;
-- `dashboard.actions`;
-- normalized request summaries under `requests.items`;
-- configured request columns;
-- licence state.
-
-All customer request information is still obtained using Jira/JSM customer context (`api.asUser()`); the contract does not introduce a second authorization model.
-
-## Mobile boundary
-
-`getClientContract` is an internal Forge client contract, not yet a public internet API. A native iOS/Android client will require a separately reviewed authentication and transport layer before it can consume Jira-backed data outside the Forge surface.
+## Mobile bootstrap boundary
+`getMobileBootstrap` is a Forge-side contract and is **not** represented as a public unauthenticated internet API. A native iOS/Android client still requires a separately reviewed authentication and transport mechanism before Jira-backed data can be consumed outside the Forge surface.
 
 The native-client layer must preserve these rules:
 
 1. Atlassian/JSM remains authoritative for customer identity and request visibility.
-2. No mobile client may broaden access based only on Portal+ organization audience configuration.
-3. Secrets/tokens must never be embedded in a white-label app binary.
-4. Branding may be cached; customer request data should be fetched under the authenticated customer context.
-5. Contract evolution must be versioned and backwards compatible where practical.
+2. Portal+ organization routing may never broaden Jira permissions.
+3. Secrets/tokens must never be embedded in an app binary.
+4. Branding/configuration can be cached safely according to the future transport design; request data remains authenticated customer data.
+5. Contract evolution is versioned and compatibility must be reviewed before removing fields.
+6. Push registration and delivery must not be claimed until a reviewed native notification backend exists.
+
+## Notification contract
+V11 reserves the topics `request-updated`, `customer-action-required` and `announcement`. Push is currently reported as unsupported. This lets the client model be designed now without falsely advertising a working push service.
 
 ## White-label model
+Portal+ is designed for two future commercial modes:
 
-Portal+ supports two future commercial modes from the same Experience data:
+- **Portal+ Mobile** — a Nuvriqo client adopting the selected Experience branding after authentication.
+- **Portal+ White Label** — dedicated app-store identity (name/icon/splash/store listing) backed by the same Experience configuration and Jira integration rules.
 
-- **Portal+ Mobile** — one Nuvriqo app that adopts the selected Experience branding after login.
-- **Portal+ White Label** — dedicated app-store identity (name/icon/splash/store listing) backed by the same Experience contract.
-
-Dedicated app-store builds must not fork the Jira integration logic or create customer-specific hard-coded request type/status/field IDs.
+Dedicated builds must not fork Jira integration logic or introduce customer-specific hard-coded request type, status or field IDs.
