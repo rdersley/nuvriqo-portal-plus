@@ -23,6 +23,13 @@ const PortalApprovals = () => {
   if (items === null) return <Spinner />;
   const pending = items.filter((x) => x.status === 'pending');
   const history = items.filter((x) => x.status !== 'pending');
+  const requirementText = (a) => {
+    if (!a.groupSize || a.groupSize <= 1) return 'Your decision will complete this approval.';
+    return a.approvalMode === 'any'
+      ? `One approval is enough. ${a.groupSize} approvers were asked.`
+      : `All ${a.groupSize} approvers must approve before the request is fully approved.`;
+  };
+
   return <Stack space="space.300">
     <Heading size="large">My Approvals</Heading>
     <Text>Review requests assigned to you. Your decision is recorded against the Jira ticket with a full audit history.</Text>
@@ -33,6 +40,8 @@ const PortalApprovals = () => {
       <Stack key={a.id} space="space.100">
         <Inline space="space.100" alignBlock="center"><Heading size="small">{a.issueKey}: {a.summary}</Heading><Lozenge appearance="inprogress">Waiting</Lozenge></Inline>
         <Text>Requested {new Date(a.createdAt).toLocaleString()}</Text>
+        <Text>{requirementText(a)}</Text>
+        {a.ruleName ? <Text>Approval rule: {a.ruleName}</Text> : null}
         {a.message ? <Text>Message: {a.message}</Text> : null}
         <TextArea
           value={reasons[a.id] || ''}
@@ -54,6 +63,7 @@ const PortalApprovals = () => {
           <Lozenge appearance={a.status === 'approved' ? 'success' : a.status === 'declined' ? 'removed' : 'default'}>{a.status}</Lozenge>
         </Inline>
         <Text>{a.decidedAt ? new Date(a.decidedAt).toLocaleString() : new Date(a.updatedAt).toLocaleString()}{a.decisionReason ? ` · ${a.decisionReason}` : ''}</Text>
+        {a.groupSize > 1 ? <Text>{a.approvalMode === 'any' ? 'Any-one approval group' : 'All-approvers group'} · {a.groupSize} approvers</Text> : null}
       </Stack>
     )}
   </Stack>;
