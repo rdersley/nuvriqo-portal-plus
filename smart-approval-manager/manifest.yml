@@ -19,7 +19,7 @@ modules:
     - key: smart-approval-project-settings
       resource: settings-page
       resolver:
-        function: resolver
+        function: config-resolver
       render: native
       title: Smart Approval Manager
 
@@ -59,6 +59,8 @@ modules:
       handler: backend/index.handler
     - key: portal-resolver
       handler: backend/portal.handler
+    - key: config-resolver
+      handler: backend/config.handler
     - key: auto-rule-worker
       handler: backend/automation.run
     - key: reminder-worker
