@@ -4,83 +4,112 @@
 Nuvriqo Smart Approval Manager for Jira Service Management
 
 ## One-line summary
-Make Jira Service Management approvals effortless for agents and customers with a clear agent panel and a dedicated portal approval inbox.
+Make customer approvals simple with an agent-side request panel, a dedicated portal approval inbox, automatic approver rules and flexible Jira workflow actions.
 
 ## Short description
-Smart Approval Manager gives JSM agents a simple way to request approval from a customer and gives customer approvers one place in the portal to see, approve and decline every request waiting for them.
+Smart Approval Manager gives JSM teams a simple approval experience from both sides of the service desk. Agents can request approval directly from a Jira ticket, customers see every decision waiting for them in My Approvals, and administrators can automate approver selection and workflow transitions with project-level rules.
 
 ## Marketplace description
-Jira Service Management approvals can be powerful, but approval configuration and day-to-day use can become harder than the decision itself. Smart Approval Manager focuses on a simple workflow: an agent chooses an approver directly from the ticket, and the approver sees all waiting decisions in one customer-portal view.
+Approvals should be easy for the person requesting them and effortless for the person making the decision.
 
-Agents can request approvals, add a message, monitor status, send reminders and cancel pending requests without leaving the ticket. Customers get a visible My Approvals area in the portal with clear Approve and Decline actions and a history of previous decisions.
+Nuvriqo Smart Approval Manager adds a focused approval experience to Jira Service Management. Agents can request approval directly from the issue, select one or more approvers, add a message, send reminders and track the result without leaving the ticket.
 
-Project administrators can configure automatic reminder timing, require decline reasons, automatically add approvers as request participants and optionally map approved or declined decisions to Jira workflow transitions.
+Customer approvers get a dedicated My Approvals area in the JSM portal. They can immediately see requests waiting for them, review the approval message, approve or decline, add a decision comment and view their approval history.
+
+For repeatable workflows, project administrators can create automatic approval rules. Rules can match Jira fields such as request type, priority, client or custom fields, assign one or more approvers, choose whether all approvers or any one approver is sufficient, and optionally move the Jira ticket when approval is requested, approved or declined.
 
 ### Key features
-- Request approval directly from a Jira issue
-- Search and select the approver
-- Customer portal My Approvals inbox
-- Approve or decline in a few clicks
-- Decision comments and configurable decline reasons
-- Pending / approved / declined / cancelled states
-- Manual and automatic reminders
-- Approval audit history
-- Optional workflow transitions after decisions
-- Per-project settings
-- Forge-hosted storage; no external application server required
+- Request approval directly from the Jira issue view
+- Select one or multiple approvers
+- Choose **All approvers must approve** or **Any one approver can approve**
+- Customer portal **My Approvals** inbox
+- Clear Approve and Decline actions
+- Optional decision comments and configurable required decline reasons
+- Automatic approver rules based on Jira/custom field conditions
+- Visual rule builder in project settings
+- Automatic or manual reminders
+- Cancel pending approvals
+- Pending / approved / declined / cancelled / no-longer-required states
+- Group approval progress and audit history
+- Optional Jira transition when approval is requested
+- Optional Jira transition after approval
+- Optional Jira transition after decline
+- Rule-specific workflow overrides
+- Automatic request-participant addition
+- Per-project configuration
+- Forge-hosted compute and storage; no external app server required
+
+## Customer experience
+Customers do not need a Jira Service Management agent licence. Smart Approval Manager exposes pending decisions in the customer portal and validates every decision against the assigned Atlassian account before accepting it.
 
 ## Suggested categories / keywords
-Jira Service Management, approvals, customer portal, workflow, service desk, approval reminders, approver, JSM
+Jira Service Management, approvals, customer portal, workflow, approval automation, approval reminders, approver, multi approver, JSM, request approval
 
-## Suggested launch positioning
-**Simple approvals for JSM customers.**
+## Launch positioning
+**Simple customer approvals for Jira Service Management.**
 
-The product should be marketed on ease of use rather than claiming to replace every advanced approval/workflow product. V1 is strongest for service teams that need customer/client sign-off without making the approver understand Jira.
+Lead with ease of use, portal visibility and quick setup rather than trying to position the app as a heavyweight enterprise BPM suite. The strongest use cases are customer/client sign-off, hardware replacement approval, access approval, purchasing approval and other service workflows where approvers should not need to understand Jira.
 
-## Suggested initial pricing hypothesis
-Start as a paid cloud app with a low-friction entry tier. Final pricing should be set only after Marketplace competitor/pricing validation immediately before submission.
+## Suggested pricing hypothesis
+Paid Cloud app with a low-friction entry tier. Final pricing should be validated against current Marketplace competitors immediately before submission.
 
 ## Screenshot plan
-1. Agent issue panel — no approval yet / Request approval
-2. Agent search + selected approver
-3. Agent pending approval with reminder controls
-4. Customer portal My Approvals summary
+1. Agent issue panel — Request approval
+2. Agent selecting multiple approvers
+3. Agent pending approval with group progress and reminder controls
+4. Customer Help Center — My Approvals summary
 5. Customer My Approvals inbox
-6. Approve/Decline decision screen
-7. Approval history
-8. Project settings
+6. Customer Approve / Decline decision screen
+7. Agent approval history after decision
+8. Project settings — default behaviour and workflow actions
+9. Project settings — visual automatic approval rule builder
 
 ## Pre-submission checklist
-- [ ] Create dedicated GitHub repository `nuvriqo-smart-approval-manager`
-- [ ] Run `forge register` and commit the real app ID
-- [ ] Install on Nuvriqo test Jira site
-- [ ] Complete agent happy-path test
-- [ ] Complete customer approve test
+- [x] Forge app registered with dedicated app ID
+- [x] Installed on Nuvriqo Jira test site
+- [x] Agent happy-path approval request tested
+- [x] Customer approval through portal tested
+- [x] Consent-free Smart Approval customer portal flow tested
+- [x] Decision written back to Jira and audit comment confirmed
 - [ ] Complete customer decline test
 - [ ] Test required decline reason
 - [ ] Test manual reminder
 - [ ] Test automatic reminder
 - [ ] Test cancellation
 - [ ] Test request participant addition
-- [ ] Test with transition IDs blank
+- [ ] Test multiple approvers — all must approve
+- [ ] Test multiple approvers — any one can approve
+- [ ] Test automatic rule matching
+- [ ] Test rule does not match when conditions fail
+- [ ] Test duplicate automatic events do not create duplicate pending approvals
+- [ ] Test approval-required transition mapping
 - [ ] Test approved transition mapping
 - [ ] Test declined transition mapping
-- [ ] Test two simultaneous approvers on different tickets
 - [ ] Verify one customer cannot see another customer's approval
-- [ ] Verify cancelled/decided approvals cannot be actioned twice
-- [ ] Run `forge lint`
-- [ ] Run production deployment
-- [ ] Capture Marketplace screenshots
-- [ ] Publish privacy policy URL
-- [ ] Publish support URL
-- [ ] Publish terms/EULA URL if required
+- [ ] Verify decided/cancelled approvals cannot be actioned twice
+- [ ] Run final `forge lint`
+- [ ] Deploy release candidate to production environment
+- [ ] Capture final Marketplace screenshots
+- [x] Publish privacy policy URL
+- [x] Publish support URL
+- [x] Publish terms URL
 - [ ] Complete Atlassian security/privacy questionnaire
-- [ ] Confirm app scopes match actual implementation
+- [ ] Confirm final requested scopes match implementation
+- [ ] Create dedicated Smart Approval Manager GitHub repository
 - [ ] Create Marketplace listing and upload assets
 
-## Known V1 boundaries
-- Smart Approval Manager uses its own approval records; it does not call Atlassian native JSM approval endpoints.
-- Approver search depends on Jira user-search visibility for the acting agent.
-- Automatic reminders run hourly, so reminders are approximate rather than minute-exact.
-- Transition IDs are configured manually in V1.
-- Multi-stage chains, delegation/out-of-office and approval analytics are post-V1 candidates.
+## Security and data handling
+- Built on Atlassian Forge.
+- Approval records are stored in Forge-hosted storage.
+- Portal decisions are authorised against the assigned Atlassian account ID.
+- Jira-side comments and workflow transitions are performed by the app after the decision is authorised.
+- Project configuration is restricted to Jira project administrators.
+- No external application server is required for V1.
+
+## V1 boundaries
+- Smart Approval Manager maintains its own approval records rather than using Atlassian native JSM approval endpoints.
+- Approver search depends on Jira user-search visibility for the acting agent/admin.
+- Automatic reminders run hourly, so delivery timing is approximate.
+- Workflow transitions are configured using Jira transition IDs; a future version may provide richer workflow discovery/mapping.
+- Automatic rules respond to Jira product events and may not run instantly.
+- Sequential multi-stage approval chains, out-of-office delegation and advanced analytics remain candidates for later releases.
