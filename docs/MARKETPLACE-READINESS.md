@@ -1,79 +1,87 @@
 # Nuvriqo Portal+ — Marketplace Readiness
 
-Status: **Release candidate — automated checks in progress; final human acceptance pending**
+Status: **V11/V12 release candidate — feature freeze approaching; final automated and human acceptance pending**
 
-This checklist tracks the requirements that must be complete before the first production Marketplace submission.
+This is the submission gate for the first production Marketplace release. Portal+ Web is the Marketplace product; native iOS/Android delivery is a separately reviewed future client and is not required for the first web release.
 
-## Product
-
-- [x] Portal-only customer rendering validated on Jira Service Management Cloud.
-- [x] Customer requests retrieved with `asUser()` and Jira/JSM permission enforcement.
-- [x] Configurable customer-facing dashboard heading and intro text.
-- [x] Dashboard counters and request list.
-- [x] Admin discovery of service desk, request types, organizations and statuses.
-- [x] Customer-visible request field discovery.
-- [x] Up to three configurable customer-visible request columns.
-- [x] Configurable status mappings.
+## Product complete
+- [x] Portal-only customer rendering on Jira Service Management Cloud.
+- [x] Customer requests retrieved with `api.asUser()` and Jira/JSM permission enforcement.
+- [x] Multiple branded Experiences from one JSM project.
+- [x] Deterministic organization-based audience routing with one fallback and ambiguity validation.
+- [x] Experience branding, hero/support identity and mobile identity metadata.
+- [x] Admin discovery of service desks, request types, organizations, statuses and customer-visible fields.
+- [x] Dashboard counts, Action Centre and recent requests.
+- [x] Configurable status mappings and up to three customer-visible request columns.
 - [x] Configurable/reorderable service categories and quick actions.
-- [x] Organization-based audience enforcement for portal-only customers.
-- [x] Request key/summary search.
-- [x] Status filtering.
-- [x] Request-type filtering.
-- [x] Date filtering.
-- [x] Sorting and pagination.
-- [x] CSV export limited to customer-visible requests, capped at 1,000 rows.
-- [x] CSV formula-injection protection.
-- [x] Configuration migration/versioning.
-- [x] Client- and server-side configuration validation.
-- [x] Fresh-install defaults avoid unmapped Awaiting counters.
-- [x] Paid-license handling added for production.
-- [ ] Final end-to-end release-candidate acceptance test on a clean/fresh configuration.
-- [ ] Final active/inactive-license test in development or staging.
+- [x] Announcements and useful resources.
+- [x] Request search, status/type/date filters, sorting and pagination.
+- [x] CSV export limited to customer-visible requests, capped at 1,000 rows with formula-injection protection.
+- [x] Desktop/mobile admin preview and routing inspector.
+- [x] Mobile-first responsive customer presentation.
+- [x] Client Contract V3 and `getMobileBootstrap` mobile-ready Forge interface.
+- [x] Configuration migration/versioning and client/server validation.
+- [x] Production licence handling foundations.
+
+## V12 / release freeze gate
+- [ ] Complete final draft/preview/publish lifecycle decision and implementation or explicitly defer it from 1.0.
+- [ ] Complete white-label configuration review; ensure no feature implies a native app is already shipped.
+- [ ] Complete scope-minimization audit for `manage:servicedesk-customer`; retain it if organization discovery cannot be implemented safely with a narrower supported scope.
+- [ ] Freeze product features for 1.0 after the above decisions.
 
 ## Automated quality
-
 - [x] Node.js 22 release workflow.
-- [x] Custom UI build runs in CI.
-- [x] Static release checks run in CI.
-- [x] Production dependency audit fails CI on high/critical findings.
-- [x] Dependencies pinned to explicit release-candidate versions.
-- [x] Existing Portal+ CI and Remote Forge QA passed on the pre-final hardening commit.
-- [ ] Latest RC head passes Portal+ CI.
-- [ ] Latest RC head passes Remote Forge QA.
-- [ ] Registered-manifest `forge lint` passes after enabling Marketplace licensing locally.
+- [x] Custom UI build and static release checks in CI.
+- [x] Production dependency audit blocks high/critical findings.
+- [x] Dependencies pinned to explicit RC versions.
+- [x] Previous Portal+ CI and Remote Forge QA green before V11 mobile changes.
+- [ ] Latest V11/V12 RC head passes Portal+ CI.
+- [ ] Latest V11/V12 RC head passes Remote Forge QA.
+- [ ] Registered-manifest `forge lint` passes after final Marketplace manifest preparation.
 
-## Forge / release
+## Final acceptance
+- [ ] Clean/fresh configuration test.
+- [ ] Migration from earlier Portal+ configuration.
+- [ ] Multiple Experience and organization-routing test, including multi-organization customer.
+- [ ] Fallback and no-audience behaviour.
+- [ ] Branding, desktop preview and phone-width preview.
+- [ ] Action Centre, services, announcements and resources.
+- [ ] Create request and open existing request journeys.
+- [ ] Search/filter/sort/pagination and CSV export.
+- [ ] Permission isolation using customer accounts with different Jira-visible requests.
+- [ ] Active/inactive licence behaviour.
+- [ ] Phone-width customer experience on a real device.
+- [ ] Controlled real-world JSM pilot after Nuvriqo acceptance passes.
 
+## Forge / security
 - [x] Node.js 22 runtime.
-- [x] No remote backends or external data egress in V1.
+- [x] No remote backend or external data egress in the first web release architecture.
 - [x] Forge hosted storage only.
-- [x] Marketplace licensing enabled in the repository manifest template.
-- [x] Portal customer unlicensed access declared where required by Forge module.
-- [x] Functional OAuth scopes documented and justified.
-- [x] No customer/project-specific IDs required in source code.
-- [ ] Apply `licensing.enabled: true` to the registered local `manifest.yml` while preserving the real Forge app ID.
-- [ ] Run `npm install`, `npm test`, dependency audit and `forge lint` against that registered manifest.
-- [ ] Deploy exact final RC commit to staging/development and perform the complete acceptance test.
-- [ ] Deploy approved commit to production only after final acceptance.
-- [ ] Enable Marketplace distribution/sharing in the Atlassian Developer Console as required for submission.
-- [ ] Verify Runs on Atlassian eligibility using the current Forge CLI/Developer Console tooling before claiming the badge.
+- [x] Marketplace licensing enabled in repository manifest template.
+- [x] Customer unlicensed access declared where required by Forge module.
+- [x] No customer/project-specific production IDs required in source.
+- [x] Jira remains authoritative for request visibility; Portal+ routing controls presentation only.
+- [ ] Apply final licensing/scopes to registered local `manifest.yml` while preserving the real Forge app ID.
+- [ ] Run `npm install`, `npm test`, production dependency audit and `forge lint` against registered manifest.
+- [ ] Deploy exact final RC commit and complete acceptance.
+- [ ] Verify current Runs on Atlassian eligibility before making any badge claim.
 
-## Marketplace listing material
-
-- [x] Listing copy draft prepared.
-- [x] Scope/permission justification prepared.
-- [x] Security overview prepared.
-- [x] Privacy policy draft prepared.
-- [x] Support policy draft prepared.
-- [x] End-user terms/DPA checklist prepared.
-- [x] Final acceptance plan prepared.
-- [ ] Vendor/legal review and publish customer-facing privacy/support/terms/documentation to permanent public HTTPS URLs.
-- [ ] Add final logo, screenshots and Marketplace media.
-- [ ] Enter pricing and billing model in Marketplace.
-- [ ] Complete Privacy & Security tab accurately from `SECURITY-AND-PRIVACY.md`.
-- [ ] Confirm vendor security contact in Atlassian Marketplace Security.
-- [ ] Complete any outstanding Marketplace partner verification/onboarding requirements.
+## Documentation / Marketplace material
+- [x] Marketplace listing draft.
+- [x] Marketplace readiness checklist.
+- [x] Security/privacy architecture.
+- [x] Privacy policy draft.
+- [x] Support policy draft.
+- [x] Terms/DPA checklist.
+- [x] Final acceptance plan.
+- [x] V11/V12 product track.
+- [x] Mobile Client Contract updated to V3.
+- [ ] Reconcile Marketplace listing copy with final V12 feature freeze.
+- [ ] Publish final customer-facing privacy, support, terms and documentation to permanent public HTTPS URLs.
+- [ ] Produce final logo, Marketplace screenshots/highlights and mobile-responsive product imagery.
+- [ ] Set pricing/billing model.
+- [ ] Complete Marketplace Privacy & Security answers and vendor security contact.
+- [ ] Complete outstanding Atlassian partner/vendor verification steps.
 
 ## Submission gate
-
-Portal+ is considered **Marketplace-ready RC** when the latest automated checks pass and the registered Forge manifest has passed lint/deployment preparation. The comprehensive human acceptance test is deliberately the last product gate. Marketplace submission itself still requires the vendor-controlled legal URLs, media, pricing, security contact and Marketplace account/form steps above.
+Portal+ is **Marketplace-ready RC** only when the final feature scope is frozen, the latest automated gates are green, the registered Forge manifest passes lint/deployment preparation and the complete Nuvriqo acceptance test passes. A controlled real-world JSM pilot is the preferred final confidence check before submission.
