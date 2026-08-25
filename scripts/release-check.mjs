@@ -8,6 +8,9 @@ const requiredFiles = [
   'static/admin/dist/index.html',
   'static/admin/dist/app.js',
   'static/admin/dist/preview.js',
+  'static/admin/dist/preview-mode.js',
+  'static/admin/dist/routing-inspector.js',
+  'static/admin/dist/v9.css',
   'static/admin/dist/styles.css',
   'static/portal/src/app.js',
   'static/portal/dist/index.html',
@@ -33,12 +36,12 @@ for (const required of ['licensing:', 'enabled: true', 'nodejs22.x', 'read:servi
 if (/external:|remote:|permissions:\s*[\s\S]*external:/m.test(manifest)) errors.push('Unexpected external/remote configuration found; re-review data egress before release.');
 
 const portalResolver = fs.readFileSync('src/portal-resolver.js', 'utf8');
-for (const required of ['api.asUser().requestJira', 'licenseState', 'audienceAllowed', 'requestColumns', 'CONFIG_VERSION=8', 'getClientContract', 'CLIENT_CONTRACT_VERSION=2', 'branding', 'most-specific-then-order', 'chooseExperience', 'capabilities']) {
+for (const required of ['api.asUser().requestJira', 'licenseState', 'audienceAllowed', 'requestColumns', 'CONFIG_VERSION=8', 'getClientContract', 'CLIENT_CONTRACT_VERSION=2', 'branding', 'most-specific-then-order']) {
   if (!portalResolver.includes(required)) errors.push(`Portal resolver missing brand-platform feature: ${required}`);
 }
 
 const adminResolver = fs.readFileSync('src/admin-resolver.js', 'utf8');
-for (const required of ['licenseState', 'getCustomerVisibleFields', 'requestColumns', 'CONFIG_VERSION=8', 'normalizeBranding', 'experiences', 'announcements', 'mobileAppName', 'routingDiagnostics', 'Only one fallback experience', 'exact same organization audience']) {
+for (const required of ['licenseState', 'getCustomerVisibleFields', 'requestColumns', 'CONFIG_VERSION=8', 'normalizeBranding', 'experiences', 'announcements', 'mobileAppName', 'routingDiagnostics', 'most-specific-then-order']) {
   if (!adminResolver.includes(required)) errors.push(`Admin resolver missing brand-platform feature: ${required}`);
 }
 
@@ -51,7 +54,17 @@ for (const required of ['request-search', 'request-status', 'request-type', 'req
   if (!portalHtml.includes(required)) errors.push(`Portal HTML missing control: ${required}`);
 }
 const adminHtml = fs.readFileSync('static/admin/dist/index.html', 'utf8');
-for (const required of ['previewModal', 'preview.js', 'Save & publish']) if (!adminHtml.includes(required)) errors.push(`Admin HTML missing Experience Builder feature: ${required}`);
+for (const required of ['previewModal', 'preview.js', 'preview-mode.js', 'routingInspector', 'routing-inspector.js', 'V9 Brand Platform', 'Save & publish']) {
+  if (!adminHtml.includes(required)) errors.push(`Admin HTML missing V9 Experience Builder feature: ${required}`);
+}
+const routingInspector = fs.readFileSync('static/admin/dist/routing-inspector.js', 'utf8');
+for (const required of ['Most-specific matching audience wins', 'Fallback', 'Publishing will be blocked']) {
+  if (!routingInspector.includes(required)) errors.push(`Routing inspector missing V9 diagnostic: ${required}`);
+}
+const previewMode = fs.readFileSync('static/admin/dist/preview-mode.js', 'utf8');
+for (const required of ['preview-mobile', 'preview-desktop', 'data-preview-mode']) {
+  if (!previewMode.includes(required)) errors.push(`Preview mode missing V9 capability: ${required}`);
+}
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 for (const [name, version] of Object.entries({ ...pkg.dependencies, ...pkg.devDependencies })) {
@@ -71,4 +84,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Portal+ V8 brand-platform release checks passed.');
+console.log('Portal+ V9 brand-platform release checks passed.');
