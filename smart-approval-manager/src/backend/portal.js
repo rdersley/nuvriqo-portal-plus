@@ -96,7 +96,10 @@ resolver.define('decideApproval', async ({ payload, context }) => {
     `${record.approver.displayName} ${decision === 'approved' ? 'approved' : 'declined'} this request${reason ? `: ${reason}` : '.'}`
   );
 
-  const transitionId = decision === 'approved' ? settings.approveTransitionId : settings.declineTransitionId;
+  const transitionId = decision === 'approved'
+    ? (record.ruleTransitionIds?.approved || settings.approveTransitionId)
+    : (record.ruleTransitionIds?.declined || settings.declineTransitionId);
+
   if (transitionId) {
     try {
       await transitionIssue(record.issueKey, transitionId);
