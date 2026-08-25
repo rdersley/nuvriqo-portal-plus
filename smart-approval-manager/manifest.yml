@@ -45,11 +45,22 @@ modules:
         - customer
         - unlicensed
 
+  trigger:
+    - key: smart-approval-auto-rules
+      function: auto-rule-worker
+      events:
+        - avi:jira:created:issue
+        - avi:jira:updated:issue
+      filter:
+        ignoreSelf: true
+
   function:
     - key: resolver
       handler: backend/index.handler
     - key: portal-resolver
       handler: backend/portal.handler
+    - key: auto-rule-worker
+      handler: backend/automation.run
     - key: reminder-worker
       handler: backend/reminders.run
       timeoutSeconds: 120
