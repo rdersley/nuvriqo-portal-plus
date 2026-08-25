@@ -7,6 +7,7 @@ const requiredFiles = [
   'static/admin/src/app.js',
   'static/admin/dist/index.html',
   'static/admin/dist/app.js',
+  'static/admin/dist/preview.js',
   'static/admin/dist/styles.css',
   'static/portal/src/app.js',
   'static/portal/dist/index.html',
@@ -18,7 +19,8 @@ const requiredFiles = [
   'docs/FINAL-ACCEPTANCE-TEST.md',
   'docs/SUPPORT.md',
   'docs/PRIVACY-POLICY-DRAFT.md',
-  'docs/TERMS-AND-DPA-CHECKLIST.md'
+  'docs/TERMS-AND-DPA-CHECKLIST.md',
+  'docs/MOBILE-CLIENT-CONTRACT.md'
 ];
 
 const errors = [];
@@ -31,23 +33,25 @@ for (const required of ['licensing:', 'enabled: true', 'nodejs22.x', 'read:servi
 if (/external:|remote:|permissions:\s*[\s\S]*external:/m.test(manifest)) errors.push('Unexpected external/remote configuration found; re-review data egress before release.');
 
 const portalResolver = fs.readFileSync('src/portal-resolver.js', 'utf8');
-for (const required of ['api.asUser().requestJira', 'licenseState', 'audienceAllowed', 'requestColumns', 'CONFIG_VERSION = 4']) {
-  if (!portalResolver.includes(required)) errors.push(`Portal resolver missing release feature: ${required}`);
+for (const required of ['api.asUser().requestJira', 'licenseState', 'audienceAllowed', 'requestColumns', 'CONFIG_VERSION=7', 'getClientContract', 'CLIENT_CONTRACT_VERSION=1', 'branding']) {
+  if (!portalResolver.includes(required)) errors.push(`Portal resolver missing brand-platform feature: ${required}`);
 }
 
 const adminResolver = fs.readFileSync('src/admin-resolver.js', 'utf8');
-for (const required of ['validateServerSide', 'licenseState', 'getCustomerVisibleFields', 'requestColumns', 'subtitle', 'CONFIG_VERSION = 4']) {
-  if (!adminResolver.includes(required)) errors.push(`Admin resolver missing release feature: ${required}`);
+for (const required of ['licenseState', 'getCustomerVisibleFields', 'requestColumns', 'CONFIG_VERSION=7', 'normalizeBranding', 'experiences', 'announcements', 'mobileAppName']) {
+  if (!adminResolver.includes(required)) errors.push(`Admin resolver missing brand-platform feature: ${required}`);
 }
 
 const portalUi = fs.readFileSync('static/portal/src/app.js', 'utf8');
-for (const required of ['request-date', 'renderPagination', 'selectedColumns', 'audienceAllowed', 'csvCell', "^\\s*[=+\\-@]"]) {
-  if (!portalUi.includes(required)) errors.push(`Portal UI missing release hardening: ${required}`);
+for (const required of ['request-date', 'audienceAllowed', 'csvCell', "^\\s*[=+\\-@]", 'applyBranding', 'brand-logo', 'supportButton', 'hero-message']) {
+  if (!portalUi.includes(required)) errors.push(`Portal UI missing release hardening/branding: ${required}`);
 }
 const portalHtml = fs.readFileSync('static/portal/dist/index.html', 'utf8');
-for (const required of ['request-search', 'request-status', 'request-type', 'request-date', 'request-sort', 'pagination']) {
-  if (!portalHtml.includes(required)) errors.push(`Portal HTML missing V1 control: ${required}`);
+for (const required of ['request-search', 'request-status', 'request-type', 'request-date', 'request-sort', 'pagination', 'brand-logo', 'hero-message', 'poweredBy']) {
+  if (!portalHtml.includes(required)) errors.push(`Portal HTML missing control: ${required}`);
 }
+const adminHtml = fs.readFileSync('static/admin/dist/index.html', 'utf8');
+for (const required of ['previewModal', 'preview.js', 'Save & publish']) if (!adminHtml.includes(required)) errors.push(`Admin HTML missing Experience Builder feature: ${required}`);
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 for (const [name, version] of Object.entries({ ...pkg.dependencies, ...pkg.devDependencies })) {
@@ -67,4 +71,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Portal+ release checks passed.');
+console.log('Portal+ V7 brand-platform release checks passed.');
