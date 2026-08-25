@@ -1,119 +1,94 @@
-# Smart Approval Manager — Consolidated V1 Test Plan
+# Smart Approval Manager — Marketplace Release Candidate Test Plan
 
-Use this plan only after the app deploys cleanly to the Nuvriqo test Jira site. The objective is one complete end-to-end test cycle before any usability changes are made.
+Use this plan after the release candidate deploys cleanly to the Nuvriqo test Jira site. The objective is one consolidated end-to-end test cycle before Marketplace submission.
 
 ## 1. Installation and visibility
-
 - Install/upgrade the development build on the Nuvriqo test site.
-- Open a Jira Service Management issue as an agent.
-- Confirm the **Smart Approval** issue panel is visible.
-- Open project settings and confirm **Smart Approval Manager** settings are visible to a project administrator.
-- Confirm a non-project-admin cannot save Smart Approval Manager settings.
-- Sign in to the customer portal as a customer and confirm **My Approvals** is available.
+- Confirm the **Smart Approval** issue panel is visible to agents.
+- Confirm **Smart Approval Manager** project settings are visible to a project administrator.
+- Confirm a non-project-admin cannot save settings.
+- Sign in as a portal customer and confirm **My Approvals** loads without Smart Approval Manager asking the customer to grant individual OAuth access.
 
-## 2. Agent request flow
+## 2. Manual single-approver flow
+- Search for an approver by name/email.
+- Select the customer, add a message and request approval.
+- Confirm pending state, Jira audit comment and request-participant access.
+- Confirm duplicate pending approval for the same approver/request is blocked.
+- Approve from the portal and confirm Jira + agent history update.
+- Repeat with decline and a required reason.
 
-- On a TEST issue, search for an approver by name/email.
-- Select the customer and add an optional approval message.
-- Click **Request approval**.
-- Confirm a pending approval appears immediately in the issue panel.
-- Confirm the public Jira/JSM comment records that approval was requested.
-- Confirm the approver is added as a request participant when that setting is enabled.
-- Try requesting approval from the same approver again and confirm the duplicate is blocked.
-- Request approval from a second approver and confirm both can exist independently.
+## 3. Manual multiple approvers — ALL
+- Select at least two approvers.
+- Choose **All approvers must approve**.
+- Confirm each approver sees only their own pending decision.
+- Approve as the first approver and confirm the group remains waiting.
+- Approve as the final approver and confirm the group becomes approved.
+- Confirm Jira only performs the approved transition after the final required approval.
+- Repeat and decline as one approver; confirm the group becomes declined and remaining pending approvals no longer drive an approval transition.
 
-## 3. Customer portal flow
+## 4. Manual multiple approvers — ANY
+- Select at least two approvers.
+- Choose **Any one approver can approve**.
+- Approve as one approver.
+- Confirm the group becomes approved immediately.
+- Confirm other pending approvals become no-longer-required and disappear from their waiting inbox.
+- Confirm the Jira approved transition runs only once.
 
-- Sign in as the selected approver.
-- Confirm the outstanding count appears in the portal summary.
-- Open **My Approvals**.
-- Confirm only approvals assigned to that signed-in account are shown.
-- Confirm request key, summary, requested date and agent message are correct.
-- Approve one request with an optional comment.
-- Confirm it moves from pending to approval history.
-- Confirm the Jira ticket receives the approval comment.
-- Confirm the agent issue panel changes to **approved**.
+## 5. Customer portal
+- Confirm portal outstanding count is correct.
+- Confirm request key, summary, requested date, message and approval requirement are clear.
+- Confirm decision comment is retained in history.
+- Confirm Customer A cannot see or action Customer B's approvals.
+- Confirm a decided/cancelled/no-longer-required approval cannot be actioned again.
 
-## 4. Decline flow
+## 6. Reminders and cancellation
+- Send a manual reminder and confirm count/audit comment.
+- Confirm scheduled reminders apply only to pending approvals.
+- Cancel a pending approval and confirm it disappears from the customer's waiting list.
+- Confirm cancelled approvals stop receiving reminders.
 
-- Create another approval.
-- Attempt to decline it without a reason while **Require decline reason** is enabled.
-- Confirm the decision is rejected and remains pending.
-- Enter a reason and decline again.
-- Confirm the approval becomes **declined** in portal and agent views.
-- Confirm the reason is recorded on the Jira request and in approval history.
+## 7. Default workflow transitions
+Test with transition IDs blank first, then valid TEST-project mappings.
+- Approval Required transition when a manual approval is requested.
+- Approved transition only when the group approval requirement is satisfied.
+- Declined transition when the group result becomes declined.
+- Invalid transition ID must not erase the approval decision; failure should be retained in audit data.
 
-## 5. Reminders
+## 8. Automatic rule builder
+- Add a rule using the visual project-settings builder.
+- Select a Jira/custom field condition.
+- Search and add one or more approvers.
+- Choose ALL or ANY mode.
+- Save and refresh; confirm the rule persists.
+- Disable the rule and confirm it does not execute.
+- Remove/re-add conditions and approvers and confirm configuration remains valid.
 
-- Create a pending approval.
-- From the agent panel click **Send reminder**.
-- Confirm the reminder count increases.
-- Confirm a public reminder comment appears on the JSM request.
-- Configure a short reminder interval in the test project.
-- Allow the hourly scheduled trigger to run and confirm an automatic reminder is recorded.
-- Confirm decided/cancelled approvals no longer receive reminders.
+## 9. Automatic rule execution
+- Create/update an issue that matches a rule.
+- Allow for Forge product-event delivery delay.
+- Confirm approvals are created automatically for the configured approvers.
+- Confirm the rule message and approval mode are correct.
+- Confirm Approval Required transition executes when configured.
+- Update the issue again and confirm duplicate pending approvals are not created.
+- Test a near-match where one condition fails; confirm no approval is created.
+- Test rule-specific workflow transition overrides.
 
-## 6. Cancellation
+## 10. Configuration isolation and safeguards
+- Confirm reminder interval, participant setting, decline-reason setting, default approval mode, workflow mappings and rules persist.
+- Confirm settings are isolated per project.
+- Confirm project-admin protection applies to metadata/approver searches and saving configuration.
+- Confirm disabled rules remain stored but do not run.
 
-- Create a pending approval.
-- Cancel it from the issue panel.
-- Confirm status becomes **cancelled** for the agent.
-- Confirm it no longer appears under the customer's pending approvals.
-- Confirm cancellation is recorded on the request.
-
-## 7. Workflow transitions
-
-Test first with transition IDs blank, then with valid TEST-project transition IDs.
-
-- Leave approve/decline transition IDs blank and confirm decisions are recorded without moving the Jira status.
-- Configure a valid approval transition ID.
-- Approve a request and confirm Jira transitions automatically.
-- Configure a valid decline transition ID and confirm decline transitions automatically.
-- Enter an invalid transition ID and confirm the approval decision remains recorded while the transition failure is retained in the audit data rather than losing the decision.
-
-## 8. Project configuration
-
-Verify all V1 settings persist after refreshing the page:
-
-- Reminder interval
-- Automatically add approver as request participant
-- Require decline reason
-- Approved transition ID
-- Declined transition ID
-
-Confirm configuration is isolated per project.
-
-## 9. Security/access tests
-
-- Customer A must not see Customer B's approvals.
-- Customer A must not be able to decide Customer B's approval even if an approval ID is known.
-- A Jira user without access to a ticket must not be able to retrieve that ticket's approvals through the agent resolver.
-- A non-project-admin must not be able to modify project settings.
-- A decided approval must not accept a second decision.
-- A cancelled approval must not accept a decision.
-
-## 10. UX review
-
-During the same test cycle record, but do not immediately fix, any observations about:
-
-- wording
-- button placement
-- panel size
-- search speed
-- portal clarity
-- mobile portal experience
-- useful extra ticket fields for the approver
-- whether reminders should be public comments or a different notification mechanism
-- whether changing/reassigning an approver should be promoted into V1
+## 11. UX / mobile review
+Review the agent panel, customer portal and project settings on desktop and a mobile-sized portal session. Record issues with wording, spacing, button order, search flow, long summaries/messages and multi-approver progress.
 
 ## Release gate
-
-V1 is ready for Marketplace submission preparation only when:
-
-- Forge lint has zero errors.
-- Development deployment succeeds.
-- Installation/upgrade succeeds on the Nuvriqo test site.
-- All critical tests above pass.
-- There are no cross-customer data leaks.
-- Agent and customer workflows are understandable without training.
-- Marketplace listing, privacy/security documentation and support details are complete.
+Marketplace submission preparation can proceed only when:
+- `npm test` passes.
+- `forge lint` has zero errors.
+- Development deploy + upgrade succeeds.
+- All critical flows above pass.
+- No cross-customer data exposure is found.
+- Automatic rules do not create duplicate pending approvals.
+- Workflow failures do not lose approval decisions.
+- Marketplace listing, support, privacy, terms and security documentation are complete.
