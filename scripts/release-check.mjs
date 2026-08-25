@@ -33,12 +33,12 @@ for (const required of ['licensing:', 'enabled: true', 'nodejs22.x', 'read:servi
 if (/external:|remote:|permissions:\s*[\s\S]*external:/m.test(manifest)) errors.push('Unexpected external/remote configuration found; re-review data egress before release.');
 
 const portalResolver = fs.readFileSync('src/portal-resolver.js', 'utf8');
-for (const required of ['api.asUser().requestJira', 'licenseState', 'audienceAllowed', 'requestColumns', 'CONFIG_VERSION=7', 'getClientContract', 'CLIENT_CONTRACT_VERSION=1', 'branding']) {
+for (const required of ['api.asUser().requestJira', 'licenseState', 'audienceAllowed', 'requestColumns', 'CONFIG_VERSION=8', 'getClientContract', 'CLIENT_CONTRACT_VERSION=2', 'branding', 'most-specific-then-order', 'chooseExperience', 'capabilities']) {
   if (!portalResolver.includes(required)) errors.push(`Portal resolver missing brand-platform feature: ${required}`);
 }
 
 const adminResolver = fs.readFileSync('src/admin-resolver.js', 'utf8');
-for (const required of ['licenseState', 'getCustomerVisibleFields', 'requestColumns', 'CONFIG_VERSION=7', 'normalizeBranding', 'experiences', 'announcements', 'mobileAppName']) {
+for (const required of ['licenseState', 'getCustomerVisibleFields', 'requestColumns', 'CONFIG_VERSION=8', 'normalizeBranding', 'experiences', 'announcements', 'mobileAppName', 'routingDiagnostics', 'Only one fallback experience', 'exact same organization audience']) {
   if (!adminResolver.includes(required)) errors.push(`Admin resolver missing brand-platform feature: ${required}`);
 }
 
@@ -71,4 +71,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Portal+ V7 brand-platform release checks passed.');
+console.log('Portal+ V8 brand-platform release checks passed.');
