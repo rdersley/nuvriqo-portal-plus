@@ -16,6 +16,7 @@ const AgentPanel = () => {
   const [selected, setSelected] = useState([]);
   const [approvalMode, setApprovalMode] = useState(modeOptions[0]);
   const [message, setMessage] = useState('');
+  const [preparedRule, setPreparedRule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +30,17 @@ const AgentPanel = () => {
         invoke('getApprovalDefaults', { issueKey }),
       ]);
       setApprovals(items || []);
-      if ((selected || []).length === 0) setApprovalMode(defaults?.defaultApprovalMode === 'any' ? modeOptions[1] : modeOptions[0]);
+      const suggestion = defaults?.suggestion || null;
+      if (suggestion) {
+        const options = (suggestion.approvers || []).map((a) => ({ label: a.displayName, value: a.accountId }));
+        setSelected(options);
+        setApprovalMode(suggestion.approvalMode === 'any' ? modeOptions[1] : modeOptions[0]);
+        setMessage(suggestion.message || '');
+        setPreparedRule(suggestion);
+      } else if ((selected || []).length === 0) {
+        setApprovalMode(defaults?.defaultApprovalMode === 'any' ? modeOptions[1] : modeOptions[0]);
+        setPreparedRule(null);
+      }
     } catch (e) { setError(e.message || String(e)); }
     finally { setLoading(false); }
   };
@@ -53,8 +64,14 @@ const AgentPanel = () => {
     if (!approvers.length) return setError('Select at least one approver first.');
     setBusy(true); setError('');
     try {
-      await invoke('createApproval', { issueKey, approvers, approvalMode: approvalMode?.value, message });
-      setQuery(''); setUsers([]); setSelected([]); setMessage('');
+      await invoke('createApproval', {
+        issueKey,
+        approvers,
+        approvalMode: approvalMode?.value,
+        message,
+        preparedRuleId: preparedRule?.ruleId || '',
+      });
+      setQuery(''); setUsers([]); setSelected([]); setMessage(''); setPreparedRule(null);
       await refresh();
     } catch (e) { setError(e.message || String(e)); }
     finally { setBusy(false); }
@@ -88,6 +105,10 @@ const AgentPanel = () => {
 
     <Stack space="space.100">
       <Heading size="small">Request approval</Heading>
+      {preparedRule ? <Stack space="space.050">
+        <Lozenge appearance="inprogress">Prepared by rule</Lozenge>
+        <Text><Text weight="bold">{preparedRule.ruleName || 'Approval rule'}</Text> matched this ticket. Approvers have been preselected for you to review before sending.</Text>
+      </Stack> : null}
       <Label labelFor="approver-search">Find approvers</Label>
       <Inline space="space.100" alignBlock="center">
         <Textfield id="approver-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or email" />
@@ -106,6 +127,7 @@ const AgentPanel = () => {
       <Label labelFor="approval-message">Message to approvers (optional)</Label>
       <TextArea id="approval-message" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Explain what needs to be approved" />
       <Button appearance="primary" onClick={requestApproval} isDisabled={(selected || []).length === 0 || busy}>Request approval</Button>
+      {preparedRule ? <Text>Nothing is sent to the customer until you click Request approval.</Text> : null}
     </Stack>
 
     <Heading size="small">Approval activity</Heading>
@@ -117,7 +139,7 @@ const AgentPanel = () => {
         </Inline>
         <Text>Requested {new Date(a.createdAt).toLocaleString()} · Reminders {a.reminderCount || 0}</Text>
         {groupProgress(a) ? <Text>{groupProgress(a)}</Text> : null}
-        {a.ruleName ? <Text>Created automatically by rule: {a.ruleName}</Text> : a.source === 'manual' ? <Text>Requested manually</Text> : null}
+        {a.source === 'rule-assisted' && a.ruleName ? <Text>Prepared by rule: {a.ruleName} · sent by agent</Text> : a.source === 'manual' ? <Text>Requested manually</Text> : null}
         {a.message ? <Text>Request message: {a.message}</Text> : null}
         {a.decisionReason ? <Text>Decision comment: {a.decisionReason}</Text> : null}
         {a.transitionError ? <Text>Workflow action needs attention: {a.transitionError}</Text> : null}
