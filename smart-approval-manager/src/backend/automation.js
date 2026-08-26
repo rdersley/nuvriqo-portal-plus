@@ -32,8 +32,12 @@ function conditionMatches(issue, condition) {
 }
 
 function ruleMatches(issue, rule) {
+  if (rule?.enabled === false) return false;
+  const triggerStatus = clean(rule?.triggerStatus, 200).toLowerCase();
+  const currentStatus = clean(issue?.fields?.status?.name, 200).toLowerCase();
+  if (triggerStatus && triggerStatus !== currentStatus) return false;
   const conditions = Array.isArray(rule?.conditions) ? rule.conditions : [];
-  return rule?.enabled !== false && conditions.length > 0 && conditions.every((c) => conditionMatches(issue, c));
+  return conditions.length > 0 && conditions.every((c) => conditionMatches(issue, c));
 }
 
 export async function run(event) {
@@ -82,6 +86,7 @@ export async function run(event) {
     projectId,
     ruleId: clean(rule.id || rule.name, 200),
     ruleName: clean(rule.name, 200),
+    triggerStatus: clean(rule.triggerStatus, 200),
     approvers,
     approvalMode: rule.approvalMode === 'any' ? 'any' : 'all',
     message: clean(rule.message || '', 2000),
