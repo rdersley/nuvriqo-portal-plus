@@ -65,11 +65,19 @@ async function addParticipant(issueKey, accountId) {
   } catch (error) { console.warn('Unable to add approver as request participant', error?.message || error); return false; }
 }
 
-async function transitionIssue(issueKey, transitionId) {
+async function transitionIssue(issueKey, targetStatus, legacyTransitionId) {
+  let transitionId = clean(legacyTransitionId, 100);
+  const target = clean(targetStatus, 200);
+  if (target) {
+    const available = await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions?expand=transitions.fields`));
+    const match = (available?.transitions || []).find((t) => clean(t?.to?.name, 200).toLowerCase() === target.toLowerCase());
+    if (!match?.id) throw new Error(`No available Jira transition leads to status “${target}” from the ticket's current status.`);
+    transitionId = String(match.id);
+  }
   if (!transitionId) return false;
   await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ transition: { id: String(transitionId) } }),
+    body: JSON.stringify({ transition: { id: transitionId } }),
   }));
   return true;
 }
@@ -137,6 +145,7 @@ resolver.define('createApproval', async ({ payload, context }) => {
       requestedBy: { accountId: context.accountId || 'unknown' }, source: 'manual',
       message: clean(payload?.message, 2000), status: 'pending', createdAt, updatedAt: createdAt,
       reminderHours, reminderCount: 0, nextReminderAt: new Date(Date.now() + reminderHours * 3600000).toISOString(),
+      ruleTargetStatuses: { approved: clean(settings.approveTargetStatus, 200), declined: clean(settings.declineTargetStatus, 200) },
       ruleTransitionIds: { approved: clean(settings.approveTransitionId, 100), declined: clean(settings.declineTransitionId, 100) },
       events: [{ type: 'requested', at: createdAt, by: context.accountId || 'unknown' }],
     };
@@ -148,9 +157,8 @@ resolver.define('createApproval', async ({ payload, context }) => {
   const modeText = records.length > 1 ? (approvalMode === 'all' ? ' All approvers must approve.' : ' Any one approver can approve.') : '';
   await addPublicComment(issueKey, `Approval requested from ${names}.${modeText} Please open My Approvals in the customer portal to review this request.`);
 
-  const pendingTransitionId = clean(settings.pendingTransitionId, 100);
-  if (pendingTransitionId) {
-    try { await transitionIssue(issueKey, pendingTransitionId); }
+  if (settings.pendingTargetStatus || settings.pendingTransitionId) {
+    try { await transitionIssue(issueKey, settings.pendingTargetStatus, settings.pendingTransitionId); }
     catch (error) { console.warn('Manual approval pending transition failed', error?.message || error); }
   }
   return records;
