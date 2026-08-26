@@ -17,6 +17,7 @@ const newRule = (number) => ({
   id: `rule-${Date.now()}-${number}`,
   name: `Approval rule ${number}`,
   enabled: true,
+  triggerStatus: '',
   approvalMode: 'all',
   conditions: [{ fieldId: 'issuetype', operator: 'equals', value: '' }],
   approvers: [],
@@ -64,13 +65,14 @@ const Settings = () => {
   const getFieldName = (id) => fields.find((f) => f.id === id)?.name || id || 'field';
   const getOperatorName = (op) => operatorOptions.find((x) => x.value === op)?.label?.toLowerCase() || op;
   const ruleSummary = (rule) => {
+    const trigger = rule.triggerStatus ? `At ${rule.triggerStatus}: ` : '';
     const conditions = (rule.conditions || []).filter((c) => c.fieldId).map((c) => {
       if (c.operator === 'isEmpty' || c.operator === 'notEmpty') return `${getFieldName(c.fieldId)} ${getOperatorName(c.operator)}`;
       return `${getFieldName(c.fieldId)} ${getOperatorName(c.operator)} ${c.value || '…'}`;
     }).join(' AND ');
     const approvers = (rule.approvers || []).map((a) => a.displayName).join(', ') || 'no approvers selected';
     const mode = rule.approvalMode === 'any' ? 'any one can approve' : 'all must approve';
-    return `${conditions || 'No conditions yet'} → ${approvers} → ${mode}`;
+    return `${trigger}${conditions || 'No conditions yet'} → prepare ${approvers} → ${mode}`;
   };
 
   const loadOptions = async (fieldId, key) => {
@@ -117,7 +119,7 @@ const Settings = () => {
   return <Stack space="space.300">
     <Stack space="space.100">
       <Heading size="large">Smart Approval Manager</Heading>
-      <Text>Configure simple customer approvals for this service project. Agents can request approvals manually, while rules can automate routine cases.</Text>
+      <Text>Configure customer approvals for this service project. Preparation rules can choose the right approvers automatically, while an agent always decides when to send the approval.</Text>
     </Stack>
 
     <Heading size="medium">Default behaviour</Heading>
@@ -125,11 +127,11 @@ const Settings = () => {
     <Select inputId="default-mode" options={modeOptions} value={modeOptions.find((x) => x.value === settings.defaultApprovalMode) || modeOptions[0]} onChange={(v) => update('defaultApprovalMode', v?.value || 'all')} />
     <Label labelFor="reminder-hours">Automatic reminder interval (hours)</Label>
     <Textfield id="reminder-hours" type="number" value={String(settings.reminderHours)} onChange={(e) => update('reminderHours', e.target.value)} />
-    <Checkbox isChecked={settings.autoAddParticipant} onChange={(e) => update('autoAddParticipant', e.target.checked)} label="Add approvers as request participants automatically" />
+    <Checkbox isChecked={settings.autoAddParticipant} onChange={(e) => update('autoAddParticipant', e.target.checked)} label="Add approvers as request participants when the agent sends the approval" />
     <Checkbox isChecked={settings.requireDeclineReason} onChange={(e) => update('requireDeclineReason', e.target.checked)} label="Require a reason when declining" />
 
     <Heading size="medium">Workflow actions</Heading>
-    <Text>Choose the Jira status Smart Approval Manager should move the ticket to. Leave a value blank if you only want the approval recorded.</Text>
+    <Text>Choose the Jira status Smart Approval Manager should move the ticket to after the agent sends the approval and after the customer decides.</Text>
     <Label labelFor="pending-status">When approval is requested</Label>
     <Select inputId="pending-status" options={statuses} value={statusValue(settings.pendingTargetStatus)} placeholder="Do not change status" onChange={(v) => update('pendingTargetStatus', v?.value || '')} />
     <Label labelFor="approved-status">When approval succeeds</Label>
@@ -138,10 +140,11 @@ const Settings = () => {
     <Select inputId="declined-status" options={statuses} value={statusValue(settings.declineTargetStatus)} placeholder="Do not change status" onChange={(v) => update('declineTargetStatus', v?.value || '')} />
 
     <Inline spread="space-between" alignBlock="center">
-      <Heading size="medium">Automatic approval rules</Heading>
+      <Heading size="medium">Approval preparation rules</Heading>
       <Button onClick={() => updateRules([...(settings.autoRules || []), newRule((settings.autoRules || []).length + 1)])}>Add rule</Button>
     </Inline>
-    {(settings.autoRules || []).length === 0 ? <Text>No automatic rules yet. Agents can still request approvals manually.</Text> : null}
+    <Text>Rules prepare the approvers and message for an agent. They never send an approval automatically.</Text>
+    {(settings.autoRules || []).length === 0 ? <Text>No preparation rules yet. Agents can still select approvers manually.</Text> : null}
 
     {(settings.autoRules || []).map((rule, ruleIndex) => <Stack key={rule.id} space="space.150">
       <Inline spread="space-between" alignBlock="center">
@@ -157,7 +160,12 @@ const Settings = () => {
       <Textfield id={`rule-name-${ruleIndex}`} value={rule.name} onChange={(e) => updateRule(ruleIndex, { name: e.target.value })} placeholder="e.g. Ryanair hardware approval" />
       <Checkbox isChecked={rule.enabled !== false} onChange={(e) => updateRule(ruleIndex, { enabled: e.target.checked })} label="Rule enabled" />
 
-      <Heading size="small">When all of these conditions match</Heading>
+      <Heading size="small">When should the approval be prepared?</Heading>
+      <Label labelFor={`trigger-status-${ruleIndex}`}>Prepare only when ticket reaches this status (optional)</Label>
+      <Select inputId={`trigger-status-${ruleIndex}`} options={statuses} value={statusValue(rule.triggerStatus)} placeholder="Prepare as soon as the conditions match" onChange={(v) => updateRule(ruleIndex, { triggerStatus: v?.value || '' })} />
+      <Text>If you choose a status, the approvers are not prepared until the ticket reaches that workflow stage.</Text>
+
+      <Heading size="small">Additional conditions</Heading>
       {(rule.conditions || []).map((condition, conditionIndex) => {
         const optionKey = `${rule.id}:${conditionIndex}:${condition.fieldId}`;
         const options = commonOptions[condition.fieldId] || fieldOptions[optionKey] || [];
@@ -182,7 +190,7 @@ const Settings = () => {
       })}
       <Button appearance="subtle" onClick={() => updateRule(ruleIndex, { conditions: [...(rule.conditions || []), { fieldId: '', operator: 'equals', value: '' }] })}>Add condition</Button>
 
-      <Heading size="small">Approvers</Heading>
+      <Heading size="small">Approvers to prepare</Heading>
       {(rule.approvers || []).length === 0 ? <Text>No approvers selected.</Text> : (rule.approvers || []).map((a) =>
         <Inline key={a.accountId} space="space.100" alignBlock="center"><Text>{a.displayName}</Text><Button appearance="subtle" onClick={() => updateRule(ruleIndex, { approvers: rule.approvers.filter((x) => x.accountId !== a.accountId) })}>Remove</Button></Inline>
       )}
@@ -201,8 +209,8 @@ const Settings = () => {
 
       <Button appearance="subtle" onClick={() => setAdvanced({ ...advanced, [rule.id]: !advanced[rule.id] })}>{advanced[rule.id] ? 'Hide workflow overrides' : 'Show workflow overrides'}</Button>
       {advanced[rule.id] ? <Stack space="space.100">
-        <Text>Optional: override the project workflow actions for this rule only.</Text>
-        <Label labelFor={`pending-rule-status-${ruleIndex}`}>When approval is requested</Label>
+        <Text>Optional: override the project workflow actions for approvals prepared by this rule.</Text>
+        <Label labelFor={`pending-rule-status-${ruleIndex}`}>When the agent sends the approval</Label>
         <Select inputId={`pending-rule-status-${ruleIndex}`} options={statuses} value={statusValue(rule.pendingTargetStatus)} placeholder="Use project default" onChange={(v) => updateRule(ruleIndex, { pendingTargetStatus: v?.value || '' })} />
         <Label labelFor={`approve-rule-status-${ruleIndex}`}>When approval succeeds</Label>
         <Select inputId={`approve-rule-status-${ruleIndex}`} options={statuses} value={statusValue(rule.approveTargetStatus)} placeholder="Use project default" onChange={(v) => updateRule(ruleIndex, { approveTargetStatus: v?.value || '' })} />
