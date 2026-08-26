@@ -36,13 +36,21 @@ async function saveApproval(record) {
   ]);
 }
 
-async function transitionIssue(issueKey, transitionId) {
-  if (!transitionId) return;
+async function transitionIssue(issueKey, targetStatus, legacyTransitionId) {
+  let transitionId = clean(legacyTransitionId, 100);
+  const target = clean(targetStatus, 200);
+  if (target) {
+    const available = await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions`));
+    const match = (available?.transitions || []).find((t) => clean(t?.to?.name, 200).toLowerCase() === target.toLowerCase());
+    if (!match?.id) throw new Error(`No available Jira transition leads to status “${target}” from the ticket's current status.`);
+    transitionId = String(match.id);
+  }
+  if (!transitionId) return false;
   await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ transition: { id: String(transitionId) } }),
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ transition: { id: transitionId } }),
   }));
+  return true;
 }
 
 async function addParticipant(issueKey, accountId) {
@@ -136,6 +144,10 @@ export async function run(event) {
         status: 'pending', createdAt, updatedAt: createdAt, reminderHours, reminderCount: 0,
         nextReminderAt: new Date(Date.now() + reminderHours * 3600000).toISOString(),
         ruleId, ruleName: clean(rule.name, 200),
+        ruleTargetStatuses: {
+          approved: clean(rule.approveTargetStatus || settings.approveTargetStatus, 200),
+          declined: clean(rule.declineTargetStatus || settings.declineTargetStatus, 200),
+        },
         ruleTransitionIds: {
           approved: clean(rule.approveTransitionId || settings.approveTransitionId, 100),
           declined: clean(rule.declineTransitionId || settings.declineTransitionId, 100),
@@ -151,9 +163,11 @@ export async function run(event) {
     const names = createdRecords.map((r) => r.approver.displayName).join(', ');
     const modeText = createdRecords.length > 1 ? (approvalMode === 'all' ? ' All approvers must approve.' : ' Any one approver can approve.') : '';
     await addPublicComment(issueKey, `Approval requested automatically${rule.name ? ` by rule “${clean(rule.name, 200)}”` : ''} from ${names}.${modeText} Approvers can review it in My Approvals.`);
+
+    const pendingTargetStatus = clean(rule.pendingTargetStatus || settings.pendingTargetStatus, 200);
     const pendingTransitionId = clean(rule.pendingTransitionId || settings.pendingTransitionId, 100);
-    if (pendingTransitionId) {
-      try { await transitionIssue(issueKey, pendingTransitionId); }
+    if (pendingTargetStatus || pendingTransitionId) {
+      try { await transitionIssue(issueKey, pendingTargetStatus, pendingTransitionId); }
       catch (error) { console.warn('Automatic approval pending transition failed', error?.message || error); }
     }
   }
