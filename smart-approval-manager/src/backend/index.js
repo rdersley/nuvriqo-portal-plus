@@ -9,6 +9,7 @@ const approvalKey = (id) => `approval#${id}`;
 const issueIndexKey = (issueKey, createdAt, id) => `issue#${issueKey}#${createdAt}#${id}`;
 const approverIndexKey = (accountId, createdAt, id) => `approver#${accountId}#${createdAt}#${id}`;
 const configKey = (projectId) => `config#${projectId}`;
+const suggestionKey = (issueKey) => `suggestion#${issueKey}`;
 const clean = (value, max = 1000) => String(value ?? '').trim().slice(0, max);
 
 async function json(response) {
@@ -99,12 +100,14 @@ resolver.define('getIssueApprovals', async ({ payload }) => {
 
 resolver.define('getApprovalDefaults', async ({ payload }) => {
   const issueKey = clean(payload?.issueKey, 100);
-  if (!issueKey) return { defaultApprovalMode: 'all', reminderHours: 24 };
+  if (!issueKey) return { defaultApprovalMode: 'all', reminderHours: 24, suggestion: null };
   const issue = await getIssueAsUser(issueKey);
   const settings = (await kvs.get(configKey(String(issue.fields.project.id)))) || {};
+  const suggestion = await kvs.get(suggestionKey(issueKey));
   return {
     defaultApprovalMode: settings.defaultApprovalMode === 'any' ? 'any' : 'all',
     reminderHours: Math.min(720, Math.max(1, Number(settings.reminderHours || 24))),
+    suggestion: suggestion || null,
   };
 });
 
@@ -115,6 +118,8 @@ resolver.define('createApproval', async ({ payload, context }) => {
 
   const issue = await getIssueAsUser(issueKey);
   const settings = (await kvs.get(configKey(String(issue.fields.project.id)))) || {};
+  const suggestion = await kvs.get(suggestionKey(issueKey));
+  const prepared = suggestion && clean(payload?.preparedRuleId, 200) && clean(payload.preparedRuleId, 200) === clean(suggestion.ruleId, 200) ? suggestion : null;
   const existing = await queryPrefix(`issue#${issueKey}#`, 200);
   const pendingAccountIds = new Set(existing.map((r) => r.value).filter((r) => r?.status === 'pending').map((r) => r.approver?.accountId));
 
@@ -131,9 +136,14 @@ resolver.define('createApproval', async ({ payload, context }) => {
   if (!canonicalApprovers.length) throw new Error('No new active approvers were selected.');
 
   const groupId = uid();
-  const approvalMode = payload?.approvalMode === 'any' ? 'any' : payload?.approvalMode === 'all' ? 'all' : settings.defaultApprovalMode === 'any' ? 'any' : 'all';
-  const reminderHours = Math.min(720, Math.max(1, Number(payload?.reminderHours || settings.reminderHours || 24)));
+  const approvalMode = payload?.approvalMode === 'any' ? 'any' : payload?.approvalMode === 'all' ? 'all' : prepared?.approvalMode === 'any' ? 'any' : settings.defaultApprovalMode === 'any' ? 'any' : 'all';
+  const reminderHours = Math.min(720, Math.max(1, Number(payload?.reminderHours || prepared?.reminderHours || settings.reminderHours || 24)));
   const records = [];
+
+  const approvedTarget = clean(prepared?.approveTargetStatus || settings.approveTargetStatus, 200);
+  const declinedTarget = clean(prepared?.declineTargetStatus || settings.declineTargetStatus, 200);
+  const approvedTransition = clean(prepared?.approveTransitionId || settings.approveTransitionId, 100);
+  const declinedTransition = clean(prepared?.declineTransitionId || settings.declineTransitionId, 100);
 
   for (const canonical of canonicalApprovers) {
     const createdAt = nowIso();
@@ -142,12 +152,15 @@ resolver.define('createApproval', async ({ payload, context }) => {
       issueKey, issueId: issue.id, projectId: String(issue.fields.project.id), projectKey: issue.fields.project.key,
       summary: clean(issue.fields.summary, 500), issueStatus: clean(issue.fields.status?.name, 200),
       approver: { accountId: canonical.accountId, displayName: clean(canonical.displayName, 200) },
-      requestedBy: { accountId: context.accountId || 'unknown' }, source: 'manual',
+      requestedBy: { accountId: context.accountId || 'unknown' },
+      source: prepared ? 'rule-assisted' : 'manual',
+      ruleId: prepared ? clean(prepared.ruleId, 200) : '',
+      ruleName: prepared ? clean(prepared.ruleName, 200) : '',
       message: clean(payload?.message, 2000), status: 'pending', createdAt, updatedAt: createdAt,
       reminderHours, reminderCount: 0, nextReminderAt: new Date(Date.now() + reminderHours * 3600000).toISOString(),
-      ruleTargetStatuses: { approved: clean(settings.approveTargetStatus, 200), declined: clean(settings.declineTargetStatus, 200) },
-      ruleTransitionIds: { approved: clean(settings.approveTransitionId, 100), declined: clean(settings.declineTransitionId, 100) },
-      events: [{ type: 'requested', at: createdAt, by: context.accountId || 'unknown' }],
+      ruleTargetStatuses: { approved: approvedTarget, declined: declinedTarget },
+      ruleTransitionIds: { approved: approvedTransition, declined: declinedTransition },
+      events: [{ type: prepared ? 'requested-from-prepared-rule' : 'requested', at: createdAt, by: context.accountId || 'unknown', rule: prepared?.ruleName || '' }],
     };
     if (settings.autoAddParticipant !== false) record.participantAdded = await addParticipant(issueKey, canonical.accountId);
     await saveApproval(record); records.push(record);
@@ -157,10 +170,13 @@ resolver.define('createApproval', async ({ payload, context }) => {
   const modeText = records.length > 1 ? (approvalMode === 'all' ? ' All approvers must approve.' : ' Any one approver can approve.') : '';
   await addPublicComment(issueKey, `Approval requested from ${names}.${modeText} Please open My Approvals in the customer portal to review this request.`);
 
-  if (settings.pendingTargetStatus || settings.pendingTransitionId) {
-    try { await transitionIssue(issueKey, settings.pendingTargetStatus, settings.pendingTransitionId); }
-    catch (error) { console.warn('Manual approval pending transition failed', error?.message || error); }
+  const pendingTarget = clean(prepared?.pendingTargetStatus || settings.pendingTargetStatus, 200);
+  const pendingTransition = clean(prepared?.pendingTransitionId || settings.pendingTransitionId, 100);
+  if (pendingTarget || pendingTransition) {
+    try { await transitionIssue(issueKey, pendingTarget, pendingTransition); }
+    catch (error) { console.warn('Approval pending transition failed', error?.message || error); }
   }
+  if (prepared) await kvs.delete(suggestionKey(issueKey));
   return records;
 });
 
