@@ -46,12 +46,21 @@ async function addPublicComment(issueKey, text) {
   } catch (error) { console.warn('Unable to add JSM public comment', error?.message || error); }
 }
 
-async function transitionIssue(issueKey, transitionId) {
-  if (!transitionId) return;
+async function transitionIssue(issueKey, targetStatus, legacyTransitionId) {
+  let transitionId = clean(legacyTransitionId, 100);
+  const target = clean(targetStatus, 200);
+  if (target) {
+    const available = await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions`));
+    const match = (available?.transitions || []).find((t) => clean(t?.to?.name, 200).toLowerCase() === target.toLowerCase());
+    if (!match?.id) throw new Error(`No available Jira transition leads to status “${target}” from the ticket's current status.`);
+    transitionId = String(match.id);
+  }
+  if (!transitionId) return false;
   await json(await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}/transitions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ transition: { id: String(transitionId) } }),
+    body: JSON.stringify({ transition: { id: transitionId } }),
   }));
+  return true;
 }
 
 async function groupRecords(record) {
@@ -130,14 +139,18 @@ resolver.define('decideApproval', async ({ payload, context }) => {
     if (mode === 'any' && outcome === 'approved') await closeRedundantPending(records, record.id, outcome);
     if (mode === 'all' && outcome === 'declined') await closeRedundantPending(records, record.id, outcome);
 
+    const targetStatus = outcome === 'approved'
+      ? clean(record.ruleTargetStatuses?.approved || settings.approveTargetStatus, 200)
+      : clean(record.ruleTargetStatuses?.declined || settings.declineTargetStatus, 200);
     const transitionId = outcome === 'approved'
       ? clean(record.ruleTransitionIds?.approved || settings.approveTransitionId, 100)
       : clean(record.ruleTransitionIds?.declined || settings.declineTransitionId, 100);
-    if (transitionId) {
+
+    if (targetStatus || transitionId) {
       try {
-        await transitionIssue(record.issueKey, transitionId);
+        await transitionIssue(record.issueKey, targetStatus, transitionId);
         record.transitionApplied = true;
-        record.events = [...record.events, { type: 'transition-applied', at: nowIso(), by: 'system', transitionId, groupOutcome: outcome }];
+        record.events = [...record.events, { type: 'transition-applied', at: nowIso(), by: 'system', targetStatus, transitionId, groupOutcome: outcome }];
       } catch (error) {
         record.transitionApplied = false;
         record.transitionError = clean(error?.message || error, 500);
