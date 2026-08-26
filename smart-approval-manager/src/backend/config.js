@@ -17,6 +17,12 @@ async function safeJson(promise, fallback) {
   catch (error) { console.warn('Smart Approval metadata lookup failed', error?.message || error); return fallback; }
 }
 
+function listFrom(value) {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.values)) return value.values;
+  return [];
+}
+
 async function assertProjectAdmin(projectId) {
   const permissions = await json(await api.asUser().requestJira(
     route`/rest/api/3/mypermissions?projectId=${projectId}&permissions=ADMINISTER_PROJECTS`
@@ -77,26 +83,31 @@ resolver.define('getRuleBuilderMetadata', async ({ payload }) => {
   if (!projectId) throw new Error('Project context is required.');
   await assertProjectAdmin(projectId);
 
-  const [fields, projectStatuses, issueTypes, priorities] = await Promise.all([
+  const [fieldsRaw, projectStatusesRaw, issueTypesRaw, prioritiesRaw] = await Promise.all([
     safeJson(api.asUser().requestJira(route`/rest/api/3/field`), []),
     safeJson(api.asUser().requestJira(route`/rest/api/3/project/${projectId}/statuses`), []),
     safeJson(api.asUser().requestJira(route`/rest/api/3/issuetype/project?projectId=${projectId}&maxResults=100`), { values: [] }),
     safeJson(api.asUser().requestJira(route`/rest/api/3/priority/search?maxResults=100`), { values: [] }),
   ]);
 
+  const fields = listFrom(fieldsRaw);
+  const projectStatuses = listFrom(projectStatusesRaw);
+  const issueTypes = listFrom(issueTypesRaw);
+  const priorities = listFrom(prioritiesRaw);
+
   const statusMap = new Map();
-  for (const issueType of projectStatuses || []) {
-    for (const status of issueType?.statuses || []) {
+  for (const issueType of projectStatuses) {
+    for (const status of listFrom(issueType?.statuses)) {
       if (status?.name) statusMap.set(status.name, { label: status.name, value: status.name });
     }
   }
 
   return {
-    fields: (fields || []).filter((f) => f?.id && f?.name).map((f) => ({ id: f.id, name: f.name, schema: f.schema || null })).sort((a, b) => a.name.localeCompare(b.name)),
+    fields: fields.filter((f) => f?.id && f?.name).map((f) => ({ id: f.id, name: f.name, schema: f.schema || null })).sort((a, b) => a.name.localeCompare(b.name)),
     statuses: [...statusMap.values()].sort((a, b) => a.label.localeCompare(b.label)),
     commonOptions: {
-      issuetype: (issueTypes?.values || []).filter((x) => x?.name).map((x) => ({ label: x.name, value: x.name })),
-      priority: (priorities?.values || []).filter((x) => x?.name).map((x) => ({ label: x.name, value: x.name })),
+      issuetype: issueTypes.filter((x) => x?.name).map((x) => ({ label: x.name, value: x.name })),
+      priority: priorities.filter((x) => x?.name).map((x) => ({ label: x.name, value: x.name })),
       status: [...statusMap.values()].sort((a, b) => a.label.localeCompare(b.label)),
     },
   };
@@ -109,12 +120,12 @@ resolver.define('getRuleFieldOptions', async ({ payload }) => {
   await assertProjectAdmin(projectId);
 
   if (!fieldId.startsWith('customfield_')) return [];
-  const contexts = await safeJson(api.asUser().requestJira(route`/rest/api/3/field/${fieldId}/context?projectId=${projectId}&maxResults=50`), { values: [] });
+  const contextsRaw = await safeJson(api.asUser().requestJira(route`/rest/api/3/field/${fieldId}/context?projectId=${projectId}&maxResults=50`), { values: [] });
   const options = [];
-  for (const context of (contexts?.values || []).slice(0, 10)) {
+  for (const context of listFrom(contextsRaw).slice(0, 10)) {
     if (!context?.id) continue;
-    const page = await safeJson(api.asUser().requestJira(route`/rest/api/3/field/${fieldId}/context/${context.id}/option?maxResults=100`), { values: [] });
-    for (const option of page?.values || []) {
+    const pageRaw = await safeJson(api.asUser().requestJira(route`/rest/api/3/field/${fieldId}/context/${context.id}/option?maxResults=100`), { values: [] });
+    for (const option of listFrom(pageRaw)) {
       if (option?.value) options.push({ label: option.value, value: option.value });
     }
   }
