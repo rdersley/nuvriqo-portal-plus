@@ -91,3 +91,4 @@ permissions:
     - read:servicedesk-request
     - write:servicedesk-request
     - read:user:jira
+    - manage:jira-configuration
