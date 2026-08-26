@@ -36,6 +36,7 @@ function cleanRules(rules) {
     id: clean(rule?.id || `rule-${index + 1}`, 100),
     name: clean(rule?.name || `Rule ${index + 1}`, 200),
     enabled: rule?.enabled !== false,
+    triggerStatus: clean(rule?.triggerStatus, 200),
     approvalMode: rule?.approvalMode === 'any' ? 'any' : 'all',
     conditions: (Array.isArray(rule?.conditions) ? rule.conditions : []).slice(0, 10).map((c) => ({
       fieldId: clean(c?.fieldId, 200),
