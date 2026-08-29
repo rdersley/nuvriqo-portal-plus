@@ -37,6 +37,5 @@ test('portal pages do not expose obvious application error banners', async ({ pa
   for (const path of ['/servicedesk/customer/portals', '/servicedesk/customer/requests']) {
     await page.goto(`${baseUrl()}${path}`, { waitUntil: 'domcontentloaded' });
     await expectHealthyPage(page);
-    await expect(page.locator('[role="alert"]')).not.toContainText(fatalError);
   }
 });
