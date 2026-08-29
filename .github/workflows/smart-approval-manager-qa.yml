@@ -1,0 +1,70 @@
+name: Smart Approval Manager QA
+
+on:
+  push:
+    branches: [smart-approval-manager-v1]
+    paths:
+      - 'smart-approval-manager/**'
+      - '.github/workflows/smart-approval-manager-qa.yml'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to Forge development after validation'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: smart-approval-manager
+    env:
+      FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
+      FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm install
+      - name: Validate backend syntax
+        run: npm test
+      - name: Forge lint
+        shell: bash
+        run: |
+          if [ -z "$FORGE_EMAIL" ] || [ -z "$FORGE_API_TOKEN" ]; then
+            echo 'Forge credentials are not configured; skipping Forge lint.'
+            exit 0
+          fi
+          npm install --global @forge/cli@latest
+          forge settings set usage-analytics false
+          forge lint
+
+  deploy-development:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: smart-approval-manager
+    env:
+      FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
+      FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install
+        run: |
+          npm install
+          npm install --global @forge/cli@latest
+          forge settings set usage-analytics false
+      - name: Deploy
+        run: forge deploy -e development --non-interactive
