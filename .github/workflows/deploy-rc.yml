@@ -19,6 +19,11 @@ on:
         type: choice
         options: [upgrade, install]
         default: upgrade
+  push:
+    branches:
+      - release/portal-plus-v1-rc
+    paths:
+      - .deploy/portal-plus-rc
 
 permissions:
   contents: read
@@ -26,6 +31,11 @@ permissions:
 concurrency:
   group: portal-plus-rc-deploy
   cancel-in-progress: false
+
+env:
+  DEPLOY_SITE: ${{ github.event.inputs.site || 'nuvriqo.atlassian.net' }}
+  DEPLOY_ENVIRONMENT: ${{ github.event.inputs.environment || 'development' }}
+  DEPLOY_INSTALL_MODE: ${{ github.event.inputs.install_mode || 'upgrade' }}
 
 jobs:
   deploy:
@@ -49,6 +59,8 @@ jobs:
           test -n "$FORGE_API_TOKEN" || (echo "Missing FORGE_API_TOKEN secret" && exit 1)
           test -f manifest.yml || (echo "manifest.yml not found" && exit 1)
           grep -q '^  id: ari:cloud:ecosystem::app/f6485514-56d4-419c-8bc7-cd097d0076d0$' manifest.yml || (echo "Unexpected Portal+ Forge app ID" && exit 1)
+          test "$DEPLOY_SITE" = "nuvriqo.atlassian.net" || (echo "Unexpected deployment site" && exit 1)
+          test "$DEPLOY_ENVIRONMENT" = "development" || (echo "Push-triggered deploys are limited to development" && exit 1)
 
       - name: Install dependencies
         run: |
@@ -61,26 +73,26 @@ jobs:
         run: |
           npm install --global @forge/cli
           forge settings set usage-analytics false
-          forge settings set default-environment "${{ inputs.environment }}"
+          forge settings set default-environment "$DEPLOY_ENVIRONMENT"
 
       - name: Forge lint
         run: forge lint
 
       - name: Deploy release candidate
-        run: forge deploy --environment "${{ inputs.environment }}" --non-interactive
+        run: forge deploy --environment "$DEPLOY_ENVIRONMENT" --non-interactive
 
       - name: Apply installation
         shell: bash
         run: |
-          if [ "${{ inputs.install_mode }}" = "upgrade" ]; then
-            forge install --upgrade --site "${{ inputs.site }}" --product jira --environment "${{ inputs.environment }}" --confirm-scopes --non-interactive
+          if [ "$DEPLOY_INSTALL_MODE" = "upgrade" ]; then
+            forge install --upgrade --site "$DEPLOY_SITE" --product jira --environment "$DEPLOY_ENVIRONMENT" --confirm-scopes --non-interactive
           else
-            forge install --site "${{ inputs.site }}" --product jira --environment "${{ inputs.environment }}" --confirm-scopes --non-interactive
+            forge install --site "$DEPLOY_SITE" --product jira --environment "$DEPLOY_ENVIRONMENT" --confirm-scopes --non-interactive
           fi
 
       - name: Deployment summary
         run: |
           echo "Portal+ RC deployed"
-          echo "Site: ${{ inputs.site }}"
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Install mode: ${{ inputs.install_mode }}"
+          echo "Site: $DEPLOY_SITE"
+          echo "Environment: $DEPLOY_ENVIRONMENT"
+          echo "Install mode: $DEPLOY_INSTALL_MODE"
