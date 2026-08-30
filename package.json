@@ -1,0 +1,25 @@
+{
+  "name": "nuvriqo-portal-plus",
+  "version": "1.0.0-rc.4",
+  "private": true,
+  "description": "Nuvriqo Portal+ for Jira Service Management",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "esbuild static/portal/src/app.js --bundle --format=iife --outfile=static/portal/dist/app.js && esbuild static/admin/src/app.js --bundle --format=iife --outfile=static/admin/dist/app.js",
+    "lint": "forge lint",
+    "release:check": "node scripts/release-check.mjs",
+    "test": "npm run build && npm run release:check",
+    "deploy": "npm run test && forge deploy",
+    "install:dev": "forge install -e development",
+    "check": "npm run test && forge lint"
+  },
+  "dependencies": {
+    "@forge/api": "8.0.4",
+    "@forge/bridge": "6.3.0",
+    "@forge/kvs": "2.0.4",
+    "@forge/resolver": "2.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
