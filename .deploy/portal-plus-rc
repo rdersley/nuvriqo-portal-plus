@@ -1,2 +1,3 @@
 Deploy Portal+ V1 RC to nuvriqo.atlassian.net development using upgrade mode.
-Trigger attempt: 2
+Trigger attempt: 3
+Controlled via Remote Forge QA deploy-sandbox job.
