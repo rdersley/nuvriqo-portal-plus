@@ -6,7 +6,7 @@ app:
     name: nodejs22.x
 
 modules:
-  jiraServiceManagement:portalSubheader:
+  jiraServiceManagement:portalHeader:
     - key: nuvriqo-portal-plus-dashboard
       resource: portal-ui
       resolver:
