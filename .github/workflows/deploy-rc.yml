@@ -1,0 +1,98 @@
+name: Deploy Portal+ RC
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: Atlassian site
+        required: true
+        default: nuvriqo.atlassian.net
+      environment:
+        description: Forge environment
+        required: true
+        type: choice
+        options: [development, staging, production]
+        default: development
+      install_mode:
+        description: Installation action after deploy
+        required: true
+        type: choice
+        options: [upgrade, install]
+        default: upgrade
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portal-plus-rc-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: nuvriqo-sandbox
+    env:
+      FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
+      FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+      FORGE_APP_ID: ${{ secrets.FORGE_APP_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          test -n "$FORGE_EMAIL" || (echo "Missing FORGE_EMAIL secret" && exit 1)
+          test -n "$FORGE_API_TOKEN" || (echo "Missing FORGE_API_TOKEN secret" && exit 1)
+          test -n "$FORGE_APP_ID" || (echo "Missing FORGE_APP_ID secret" && exit 1)
+          test -f manifest.template.yml || (echo "manifest.template.yml not found" && exit 1)
+
+      - name: Prepare registered Forge manifest
+        shell: bash
+        run: |
+          APP_ID="$FORGE_APP_ID"
+          case "$APP_ID" in
+            ari:cloud:ecosystem::app/*) ;;
+            *) APP_ID="ari:cloud:ecosystem::app/$APP_ID" ;;
+          esac
+          sed "s#REPLACE_WITH_FORGE_APP_ID#$APP_ID#" manifest.template.yml > manifest.yml
+          grep -q '^  id: ari:cloud:ecosystem::app/' manifest.yml || (echo "Invalid Forge app ID" && exit 1)
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Build and release checks
+        run: npm test
+
+      - name: Install Forge CLI
+        run: |
+          npm install --global @forge/cli
+          forge settings set usage-analytics false
+          forge settings set default-environment "${{ inputs.environment }}"
+
+      - name: Forge lint
+        run: forge lint
+
+      - name: Deploy release candidate
+        run: forge deploy --environment "${{ inputs.environment }}" --non-interactive
+
+      - name: Apply installation
+        shell: bash
+        run: |
+          if [ "${{ inputs.install_mode }}" = "upgrade" ]; then
+            forge install --upgrade --site "${{ inputs.site }}" --product jira --environment "${{ inputs.environment }}" --confirm-scopes --non-interactive
+          else
+            forge install --site "${{ inputs.site }}" --product jira --environment "${{ inputs.environment }}" --confirm-scopes --non-interactive
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "Portal+ RC deployed"
+          echo "Site: ${{ inputs.site }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Install mode: ${{ inputs.install_mode }}"
