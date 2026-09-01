@@ -13,6 +13,19 @@ async function expectHealthyPage(page) {
   await expect(page.locator('body')).not.toContainText(fatalError);
 }
 
+async function expectPortalPlusNotStuck(page) {
+  await page.waitForTimeout(14000);
+  for (const frame of page.frames()) {
+    const body = frame.locator('body');
+    if (await body.count()) {
+      const text = await body.innerText().catch(() => '');
+      if (/Loading your service hub/i.test(text)) {
+        throw new Error('Portal+ remained on its loading state beyond the 12-second client timeout');
+      }
+    }
+  }
+}
+
 test('portal directory loads for authenticated customer session', async ({ page }) => {
   await page.goto(`${baseUrl()}/servicedesk/customer/portals`, { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveURL(/servicedesk\/customer\/portals/);
@@ -36,6 +49,7 @@ test('customer can enter a portal without losing authentication', async ({ page 
   await page.waitForLoadState('domcontentloaded');
   await expect(page).toHaveURL(/servicedesk\/customer\/portal\//);
   await expectHealthyPage(page);
+  await expectPortalPlusNotStuck(page);
 });
 
 test('customer request list is reachable without losing authentication', async ({ page }) => {
