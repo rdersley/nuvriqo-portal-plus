@@ -8,7 +8,8 @@
     "build": "esbuild static/portal/src/app.js --bundle --format=iife --outfile=static/portal/dist/app.js && esbuild static/admin/src/app.js --bundle --format=iife --outfile=static/admin/dist/app.js",
     "lint": "forge lint",
     "release:check": "node scripts/release-check.mjs",
-    "test": "npm run build && npm run release:check",
+    "test:integrations": "node tests/integration-contract.test.mjs",
+    "test": "npm run build && npm run release:check && npm run test:integrations",
     "deploy": "npm run test && forge deploy",
     "install:dev": "forge install -e development",
     "check": "npm run test && forge lint"
