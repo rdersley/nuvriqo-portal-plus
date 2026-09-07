@@ -2,6 +2,7 @@ export const PORTAL_INTEGRATION_CONTRACT_VERSION = 1;
 
 const safeString = (value, fallback = '') => value == null ? fallback : String(value);
 const safeArray = (value) => Array.isArray(value) ? value : [];
+const safeObject = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 
 export function normalizePortalModule(module = {}) {
   const id = safeString(module.id).trim();
@@ -42,14 +43,15 @@ export function normalizePortalModule(module = {}) {
       subtitle: safeString(item?.subtitle),
       status: safeString(item?.status),
       url: safeString(item?.url),
-      badge: safeString(item?.badge)
+      badge: safeString(item?.badge),
+      metadata: safeObject(item?.metadata)
     })),
     health: {
       available: module?.health?.available !== false,
       status: safeString(module?.health?.status, 'available'),
       message: safeString(module?.health?.message)
     },
-    metadata: module?.metadata && typeof module.metadata === 'object' ? module.metadata : {}
+    metadata: safeObject(module?.metadata)
   };
 }
 
@@ -72,11 +74,11 @@ export const portalIntegrationExamples = {
   },
   assets: {
     id: 'assets',
-    provider: 'nuvriqo-assets-manager',
+    provider: 'nuvriqo-asset-manager',
     title: 'My Assets',
     description: 'Assets assigned to you or your organisation.',
     priority: 30,
-    counters: [{ id: 'assigned', label: 'Assigned assets', value: 0 }],
+    counters: [{ id: 'assigned', label: 'Visible assets', value: 0 }],
     actions: [{ id: 'view-assets', label: 'View my assets', url: '' }]
   }
 };
