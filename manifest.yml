@@ -42,5 +42,6 @@ permissions:
   scopes:
     - read:servicedesk-request
     - read:jira-work
+    - write:jira-work
     - manage:servicedesk-customer
     - storage:app
