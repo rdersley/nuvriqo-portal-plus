@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCustomerRequestDetails, buildSelfServiceDashboard, fieldsRequiredForSelfService } from '../src/self-service-runtime.js';
+import { buildCustomerRequestDetails, buildRequestDetailModel, buildSelfServiceDashboard, fieldsRequiredForSelfService } from '../src/self-service-runtime.js';
 
 const experience = {
   selfService: {
@@ -19,6 +19,7 @@ const experience = {
 const requests = [
   {
     issueKey: 'TEST-1',
+    summary: 'Device will not start',
     currentStatus: { status: 'Resolved' },
     requestType: { name: 'Hardware' },
     createdDate: { iso8601: '2026-09-01T08:00:00.000Z' },
@@ -27,7 +28,8 @@ const requests = [
       { fieldId: 'customfield_123', value: 'POS-101' },
       { fieldId: 'customfield_456', value: '0870000000' }
     ],
-    sla: { state: 'met' }
+    sla: { state: 'met', label: 'Time to resolution', target: '8h', remaining: '6h' },
+    _links: { web: '/servicedesk/customer/portal/request/TEST-1' }
   },
   {
     issueKey: 'TEST-2',
@@ -58,6 +60,25 @@ test('builds request detail fields without exposing unconfigured custom fields',
   assert.deepEqual(details.map((row) => row.id), ['customfield_123', 'customfield_456']);
   assert.equal(details[0].value, 'POS-101');
   assert.equal(details[1].editableAfterSubmission, true);
+});
+
+test('builds polished request detail model with configured actions and SLA only', () => {
+  const detail = buildRequestDetailModel(requests[0], experience.selfService);
+  assert.equal(detail.key, 'TEST-1');
+  assert.equal(detail.summary, 'Device will not start');
+  assert.equal(detail.status, 'Resolved');
+  assert.equal(detail.sla.state, 'met');
+  assert.equal(detail.sla.target, '8h');
+  assert.equal(detail.actions.closeRequest, true);
+  assert.equal(detail.actions.escalate, true);
+  assert.equal(detail.capabilities.hasEditableFields, true);
+  assert.equal(detail.fields.some((field) => field.id === 'customfield_456'), true);
+});
+
+test('hides SLA detail when SLA visibility is disabled', () => {
+  const detail = buildRequestDetailModel(requests[0], { ...experience.selfService, sla: { enabled: false } });
+  assert.equal(detail.sla, null);
+  assert.equal(detail.capabilities.slaVisible, false);
 });
 
 test('returns all configured Jira fields needed by the self-service layer', () => {
