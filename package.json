@@ -8,7 +8,7 @@
     "build": "esbuild static/portal/src/app.js --bundle --format=iife --outfile=static/portal/dist/app.js && esbuild static/portal/src/modules-runtime.js --bundle --format=iife --outfile=static/portal/dist/modules-runtime.js && esbuild static/admin/src/app.js --bundle --format=iife --outfile=static/admin/dist/app.js",
     "lint": "forge lint",
     "release:check": "node scripts/release-check.mjs",
-    "test:integrations": "node tests/integration-contract.test.mjs && node tests/integration-registry.test.mjs && node tests/integration-adapters.test.mjs && node tests/asset-manager-adapter.test.mjs && node tests/self-service-contract.test.mjs && node tests/self-service-runtime.test.mjs && node tests/self-service-admin.test.mjs && node tests/ui-shell-structure.test.mjs && node tests/module-renderers.test.mjs",
+    "test:integrations": "node tests/integration-contract.test.mjs && node tests/integration-registry.test.mjs && node tests/integration-adapters.test.mjs && node tests/asset-manager-adapter.test.mjs && node tests/self-service-contract.test.mjs && node tests/self-service-runtime.test.mjs && node tests/self-service-admin.test.mjs && node tests/request-detail-security.test.mjs && node tests/ui-shell-structure.test.mjs && node tests/module-renderers.test.mjs",
     "test": "npm run build && npm run release:check && npm run test:integrations",
     "deploy": "npm run test && forge deploy",
     "install:dev": "forge install -e development",
