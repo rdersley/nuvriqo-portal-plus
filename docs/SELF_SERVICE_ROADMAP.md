@@ -99,7 +99,8 @@ Implemented on `feature/customer-self-service-layer`:
 - Self-service runtime that converts configured Jira fields and customer-visible requests into a safe Portal+ dashboard/report payload.
 - Request-detail field builder that only exposes administrator-configured fields.
 - Runtime capability detection so UI sections can hide when a feature is disabled.
-- Automated contract and runtime tests added to the standard Portal+ test command.
+- Editable-field safety policy: simple supported field types can be enabled for customer edits; user/group/asset/complex fields are automatically downgraded to read-only in V1.
+- Automated contract, runtime and admin-field policy tests added to the standard Portal+ test command.
 
 Next implementation steps:
 
