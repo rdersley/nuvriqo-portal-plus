@@ -84,3 +84,30 @@ Companion app sections must disappear cleanly when the provider is unavailable.
 - Commercial self-service expansion: `feature/customer-self-service-layer`.
 - Smart Approval provider work is isolated in its own repository/feature branch.
 - Asset Manager provider work is isolated in its own repository/feature branch.
+
+## Build progress — 14 Sep 2026
+
+Implemented on `feature/customer-self-service-layer`:
+
+- Versioned self-service configuration contract.
+- Read-only/editable customer field model.
+- Up to 8 My Requests list fields and up to 16 request-detail fields.
+- SLA visibility configuration contract.
+- Customer reporting aggregation for Created/Resolved, Request Type, Status, SLA Met/Breached and Average Resolution Time.
+- CSV/Excel capability contract.
+- Close Request / Escalate action contract.
+- Self-service runtime that converts configured Jira fields and customer-visible requests into a safe Portal+ dashboard/report payload.
+- Request-detail field builder that only exposes administrator-configured fields.
+- Runtime capability detection so UI sections can hide when a feature is disabled.
+- Automated contract and runtime tests added to the standard Portal+ test command.
+
+Next implementation steps:
+
+1. Wire the self-service runtime into `getDashboard`, `getClientContract` and mobile/bootstrap payloads.
+2. Expand the request fetch to include all configured self-service fields while preserving the current consent-free visibility boundary.
+3. Add admin controls for read-only/editable field selection, SLA visibility, reporting, export and customer actions.
+4. Render the expanded My Requests columns and customer request-detail panel.
+5. Add reporting UI and drill-down filters.
+6. Validate the supported JSM SLA API/data path before exposing live SLA values.
+7. Add controlled field editing and lifecycle actions behind explicit admin allow-lists.
+8. Run deployed permission, mobile and cross-app regression QA before merging toward the stable release line.
