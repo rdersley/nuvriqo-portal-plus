@@ -35,6 +35,40 @@ export function buildCustomerRequestDetails(request, selfServiceConfig = {}) {
     }));
 }
 
+export function buildRequestDetailModel(request, selfServiceConfig = {}) {
+  const config = normalizeSelfServiceConfig(selfServiceConfig);
+  const status = safeString(request?.currentStatus?.status || request?.status?.name || 'Open');
+  const key = safeString(request?.issueKey || request?.key);
+  const summary = safeString(request?.summary || request?.requestType?.name || 'Service request');
+  const sla = request?.sla && typeof request.sla === 'object' ? {
+    state: safeString(request.sla.state),
+    label: safeString(request.sla.label || request.sla.name || 'SLA'),
+    target: safeString(request.sla.target),
+    remaining: safeString(request.sla.remaining)
+  } : null;
+  return {
+    key,
+    summary,
+    requestType: safeString(request?.requestType?.name),
+    status,
+    created: safeString(request?.createdDate?.iso8601),
+    updated: safeString(request?.updatedDate?.iso8601),
+    url: safeString(request?._links?.web),
+    fields: buildCustomerRequestDetails(request, config),
+    sla: config.sla.enabled ? sla : null,
+    actions: {
+      closeRequest: Boolean(config.customerActions.closeRequest),
+      escalate: Boolean(config.customerActions.escalate)
+    },
+    capabilities: {
+      hasEditableFields: config.fields.some((field) => field.editableAfterSubmission),
+      hasVisibleFields: config.fields.some((field) => field.showInDetails),
+      slaVisible: Boolean(config.sla.enabled && sla),
+      relatedRequests: Boolean(config.relatedRequests)
+    }
+  };
+}
+
 export function buildSelfServiceDashboard({ experience = {}, requests = [] } = {}) {
   const config = normalizeSelfServiceConfig(experience.selfService || {});
   const values = safeArray(requests);
