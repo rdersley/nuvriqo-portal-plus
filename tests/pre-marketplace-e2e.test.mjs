@@ -21,7 +21,10 @@ assert.match(detail,/assertVisibleRequest/,'request detail service must invoke c
 // Request detail commercial self-service capabilities live in the main portal app.
 assert.match(app,/getRequestDetail/,'request detail UI must load the secure detail resolver');
 assert.match(app,/updateRequestFields/,'request detail UI must support configured post-submission edits');
-assert.match(app,/requestAction/,'request detail UI must expose safe customer actions');
+assert.match(app,/performRequestAction/,'request detail UI must expose the safe customer action endpoint');
+assert.match(app,/runRequestAction/,'request detail UI must wire Close/Escalate controls to the action runtime');
+assert.match(app,/['"]close['"]/,'request detail UI must expose Close Request');
+assert.match(app,/['"]escalate['"]/,'request detail UI must expose Escalate');
 assert.match(app,/sla/i,'request detail UI must render real SLA data when available');
 assert.match(security,/editableAfterSubmission/,'field writes must use the configured editable allow-list');
 assert.match(detail,/transitions/i,'close/escalate must be selected from currently available Jira transitions');
