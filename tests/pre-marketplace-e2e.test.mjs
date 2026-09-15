@@ -6,7 +6,6 @@ const resolver=read('src/portal-resolver.js');
 const detail=read('src/request-detail-service.js');
 const security=read('src/request-detail-security.js');
 const app=read('static/portal/src/app.js');
-const runtime=read('static/portal/src/request-detail-runtime.js');
 const grid=read('static/portal/dist/request-grid.css');
 const manifest=read('manifest.yml');
 
@@ -19,11 +18,11 @@ assert.match(resolver,/organization|organisation/i,'customer visibility must ret
 assert.match(security,/assertVisibleRequest/,'request detail mutations must enforce current customer visibility');
 assert.match(detail,/assertVisibleRequest/,'request detail service must invoke current customer visibility enforcement');
 
-// Request detail commercial self-service capabilities.
-assert.match(runtime,/getRequestDetail/,'request detail UI must load the secure detail resolver');
-assert.match(runtime,/updateRequestFields/,'request detail UI must support configured post-submission edits');
-assert.match(runtime,/requestAction/,'request detail UI must expose safe customer actions');
-assert.match(runtime,/sla/i,'request detail UI must render real SLA data when available');
+// Request detail commercial self-service capabilities live in the main portal app.
+assert.match(app,/getRequestDetail/,'request detail UI must load the secure detail resolver');
+assert.match(app,/updateRequestFields/,'request detail UI must support configured post-submission edits');
+assert.match(app,/requestAction/,'request detail UI must expose safe customer actions');
+assert.match(app,/sla/i,'request detail UI must render real SLA data when available');
 assert.match(security,/editableAfterSubmission/,'field writes must use the configured editable allow-list');
 assert.match(detail,/transitions/i,'close/escalate must be selected from currently available Jira transitions');
 
