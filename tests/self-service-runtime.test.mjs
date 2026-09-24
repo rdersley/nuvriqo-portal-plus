@@ -12,7 +12,7 @@ const experience = {
     reporting: { enabled: true },
     export: { csv: true, excel: true },
     relatedRequests: true,
-    customerActions: { closeRequest: true, escalate: true }
+    customerActions: { closeRequest: true, closeStatusIds: ['6'], escalate: true, escalateStatusIds: ['7'] }
   }
 };
 

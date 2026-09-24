@@ -20,8 +20,8 @@ assert.match(resolver,/updateRequestFields/);
 assert.match(resolver,/performRequestAction/);
 assert.doesNotMatch(resolver,/asUser\s*\(/,'customer resolver must remain consent-free and never use asUser');
 
-assert.match(service,/assertVisibleRequest/,'request actions must fail closed against the visible request set');
-assert.match(service,/sanitizeCustomerFieldUpdates/,'field writes must use the admin allow-list');
+assert.match(service,/requireVisible/,'request actions must fail closed without a server-verified visible request');
+assert.match(service,/prepareCustomerFieldUpdates/,'field writes must use the admin allow-list');
 assert.match(service,/chooseCustomerTransition/,'customer transitions must be discovered, never hard-coded');
 assert.doesNotMatch(service,/transition:\s*\{\s*id:\s*['"]\d+['"]/,'transition IDs must not be hard-coded');
 assert.doesNotMatch(service,/asUser\s*\(/,'request detail service must remain asApp');

@@ -32,13 +32,16 @@ const config = normalizeSelfServiceConfig({
   sla: { enabled: true },
   reporting: { enabled: true },
   export: { csv: true, excel: true },
-  customerActions: { closeRequest: true, escalate: true }
+  customerActions: { closeRequest: true, closeStatusIds: ['6'], escalate: true, escalateStatusIds: ['7'] }
 });
 assert.equal(config.listFields.length, MAX_REQUEST_COLUMNS);
 assert.equal(config.sla.enabled, true);
 assert.equal(config.reporting.enabled, true);
 assert.equal(config.export.excel, true);
 assert.equal(config.customerActions.closeRequest, true);
+assert.deepEqual(config.customerActions.closeStatusIds, ['6']);
+// Enabling an action without choosing target statuses leaves it switched off.
+assert.equal(normalizeSelfServiceConfig({ customerActions: { closeRequest: true, escalate: true } }).customerActions.closeRequest, false);
 
 const report = buildCustomerReport([
   {

@@ -16,13 +16,16 @@ const config={fields:[
 assert.deepEqual(sanitizeCustomerFieldUpdates({customfield_1:'ok',customfield_2:'blocked',customfield_3:'blocked',summary:'blocked'},config),{customfield_1:'ok'});
 
 const transitions=[
-  {id:'11',name:'In Progress',to:{name:'In Progress'}},
-  {id:'21',name:'Resolve request',to:{name:'Resolved'}},
-  {id:'31',name:'Escalate to support lead',to:{name:'Escalated'}}
+  {id:'11',name:'In Progress',to:{id:'3',name:'In Progress'}},
+  {id:'21',name:'Resolve request',to:{id:'5',name:'Resolved'}},
+  {id:'31',name:'Escalate to support lead',to:{id:'7',name:'Escalated'}},
+  {id:'41',name:'De-escalate',to:{id:'1',name:'Open'}}
 ];
-assert.equal(chooseCustomerTransition(transitions,'close')?.id,'21');
-assert.equal(chooseCustomerTransition(transitions,'escalate')?.id,'31');
-assert.equal(chooseCustomerTransition(transitions,'unknown'),null);
+// Selection is by administrator-chosen destination status, never by name.
+assert.equal(chooseCustomerTransition(transitions,['5'])?.id,'21');
+assert.equal(chooseCustomerTransition(transitions,['7'])?.id,'31');
+assert.equal(chooseCustomerTransition(transitions,[]),null);
+assert.equal(chooseCustomerTransition(transitions,['99']),null);
 
 assert.deepEqual(normalizeSlaPage({values:[{
   id:'5',name:'Time to resolution',ongoingCycle:{breached:false,goalDuration:{friendly:'8h'},elapsedTime:{friendly:'2h'},remainingTime:{friendly:'6h'},startTime:{iso8601:'2026-09-14T10:00:00Z'}}

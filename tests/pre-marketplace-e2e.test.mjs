@@ -16,7 +16,7 @@ assert.equal(/api\.asUser\(\)\.requestJira/.test(detail),false,'request detail s
 assert.match(resolver,/reporter\s*=|reporter\s+in|reporter/i,'customer visibility must remain reporter scoped');
 assert.match(resolver,/organization|organisation/i,'customer visibility must retain organisation scoping');
 assert.match(security,/assertVisibleRequest/,'request detail mutations must enforce current customer visibility');
-assert.match(detail,/assertVisibleRequest/,'request detail service must invoke current customer visibility enforcement');
+assert.match(detail,/requireVisible/,'request detail service must invoke current customer visibility enforcement');
 
 // Request detail commercial self-service capabilities live in the main portal app.
 assert.match(app,/getRequestDetail/,'request detail UI must load the secure detail resolver');

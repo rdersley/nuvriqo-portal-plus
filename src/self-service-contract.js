@@ -27,6 +27,10 @@ export function normalizePortalField(field = {}) {
   return {
     id,
     name: safeString(field.name, id).slice(0, 100),
+    // Jira schema type/custom key, captured from discovery at publish time so
+    // customer edits can be validated and shaped for the Jira REST API.
+    type: safeString(field.type || field?.jiraSchema?.type).slice(0, 60),
+    custom: safeString(field.custom || field?.jiraSchema?.custom).slice(0, 200),
     mode,
     showInList: field.showInList === true,
     showInDetails: field.showInDetails !== false,
@@ -62,10 +66,24 @@ export function normalizeSelfServiceConfig(config = {}) {
       excel: config?.export?.excel === true
     },
     relatedRequests: config?.relatedRequests === true,
-    customerActions: {
-      closeRequest: config?.customerActions?.closeRequest === true,
-      escalate: config?.customerActions?.escalate === true
-    }
+    customerActions: normalizeCustomerActions(config?.customerActions)
+  };
+}
+
+const MAX_ACTION_STATUSES = 10;
+const statusIdList = (value) => [...new Set(safeArray(value).map((id) => safeString(id)).filter(Boolean))].slice(0, MAX_ACTION_STATUSES);
+
+// Customer actions only ever run a Jira transition whose destination status an
+// administrator explicitly chose. An action with no target statuses is inert.
+export function normalizeCustomerActions(actions = {}) {
+  const closeStatusIds = statusIdList(actions?.closeStatusIds);
+  const escalateStatusIds = statusIdList(actions?.escalateStatusIds);
+  return {
+    closeRequest: actions?.closeRequest === true && closeStatusIds.length > 0,
+    closeStatusIds,
+    escalate: actions?.escalate === true && escalateStatusIds.length > 0,
+    escalateStatusIds,
+    auditComments: actions?.auditComments !== false
   };
 }
 

@@ -1,0 +1,216 @@
+// Behaviour tests for what customers can see and do through the Portal+
+// resolver. Runs the real resolver handler against an in-memory Jira.
+// Requires: node --experimental-test-module-mocks
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { mock, test, beforeEach } from 'node:test';
+import { createFakeJira, parseCustomerJql, route } from './helpers/fake-jira.mjs';
+
+const PROJECT = '10000';
+const STATUS = { open: '1', waiting: '2', resolved: '5', closed: '6', escalated: '7', reopened: '8' };
+
+let jira;
+const store = new Map();
+// Forge's bundler unwraps the CommonJS default export; plain Node does not.
+const { default: Resolver } = createRequire(import.meta.url)('@forge/resolver');
+mock.module('@forge/resolver', { defaultExport: Resolver });
+mock.module('@forge/api', {
+  defaultExport: { asApp: () => ({ requestJira: (path, options) => jira.requestJira(path, options) }) },
+  namedExports: { route }
+});
+mock.module('@forge/kvs', {
+  namedExports: { kvs: { get: async (key) => store.get(key) ?? null, set: async (key, value) => { store.set(key, value); }, delete: async (key) => { store.delete(key); } } }
+});
+
+const { handler } = await import('../src/portal-resolver.js');
+const { customerJql, escapeJql } = await import('../src/customer-visibility.js');
+
+const call = (functionKey, accountId, payload = {}) =>
+  handler({ call: { functionKey, payload }, context: { extension: { project: { id: PROJECT } }, environmentType: 'DEVELOPMENT' } }, { principal: { accountId } });
+
+const issue = (key, reporter, { orgIds = [], created = '2026-09-01T10:00:00.000+0000', statusId = STATUS.open, fields = {} } = {}) =>
+  ({ key, projectId: PROJECT, reporter, reporterName: `${reporter} name`, orgIds, created, statusId, statusName: 'Open', summary: `${key} summary`, fields });
+
+const transition = (id, name, toId, toName, fields) => ({ id, name, to: { id: toId, name: toName }, ...(fields ? { fields } : {}) });
+
+function experience(selfService = {}) {
+  return {
+    version: 12,
+    serviceDeskId: '1',
+    experiences: [{
+      id: 'default', name: 'Default', displayName: 'Support', audienceOrganizationIds: [],
+      dashboard: { open: true }, statusMapping: { awaitingCustomer: [STATUS.waiting], awaitingSupport: [] },
+      categories: [], requestColumns: [], announcements: [], links: [],
+      selfService: {
+        fields: [
+          { id: 'customfield_text', name: 'Reference', type: 'string', mode: 'editable', editableAfterSubmission: true },
+          { id: 'customfield_notes', name: 'Notes', type: 'string', custom: 'com.atlassian.jira.plugin.system.customfieldtypes:textarea', mode: 'editable', editableAfterSubmission: true },
+          { id: 'customfield_due', name: 'Needed by', type: 'date', mode: 'editable', editableAfterSubmission: true },
+          { id: 'customfield_locked', name: 'Internal cost', type: 'number', mode: 'read-only' }
+        ],
+        customerActions: { closeRequest: true, closeStatusIds: [STATUS.closed], escalate: true, escalateStatusIds: [STATUS.escalated] },
+        ...selfService
+      }
+    }]
+  };
+}
+
+function seed({ issues, transitions = {}, selfService } = {}) {
+  store.clear();
+  store.set(`portalplus:config:${PROJECT}`, experience(selfService));
+  jira = createFakeJira({
+    organizations: [{ id: '100', name: 'Acme' }, { id: '200', name: 'Beta "Quoted" Ltd' }],
+    memberships: { alice: ['100'], bob: ['200'] },
+    issues: issues ?? [
+      issue('SD-1', 'alice'),
+      issue('SD-2', 'bob'),
+      issue('SD-3', 'bob', { orgIds: ['100'] }),
+      issue('SD-4', 'carol'),
+      issue('SD-5', 'dave', { orgIds: ['200'] })
+    ],
+    transitions
+  });
+}
+
+const keys = (result) => result.requests.values.map((r) => r.issueKey).sort();
+
+beforeEach(() => seed());
+
+test('customer sees own requests plus requests shared with their organisation only', async () => {
+  assert.deepEqual(keys(await call('getDashboard', 'alice')), ['SD-1', 'SD-3']);
+  assert.deepEqual(keys(await call('getDashboard', 'bob')), ['SD-2', 'SD-3', 'SD-5']);
+});
+
+test('customer without organisations sees only requests they reported', async () => {
+  assert.deepEqual(keys(await call('getDashboard', 'carol')), ['SD-4']);
+});
+
+test('request detail is refused for a request outside the customer boundary', async () => {
+  await assert.rejects(call('getRequestDetail', 'alice', { issueKey: 'SD-2' }), /not available/);
+  await assert.rejects(call('getRequestDetail', 'carol', { issueKey: 'SD-3' }), /not available/);
+  const detail = await call('getRequestDetail', 'alice', { issueKey: 'SD-3' });
+  assert.equal(detail.key, 'SD-3');
+});
+
+test('request detail works for an older request beyond the first page of 100', async () => {
+  const many = Array.from({ length: 150 }, (_, i) => issue(`SD-${i + 1}`, 'alice', { created: new Date(Date.UTC(2026, 0, 1) + i * 3600000).toISOString() }));
+  seed({ issues: many });
+  const detail = await call('getRequestDetail', 'alice', { issueKey: 'SD-1' });
+  assert.equal(detail.key, 'SD-1');
+});
+
+test('malformed or injected request keys are rejected before reaching Jira', async () => {
+  await assert.rejects(call('getRequestDetail', 'alice', { issueKey: 'SD-1" OR reporter = "bob' }), /Invalid request key/);
+  await assert.rejects(call('performRequestAction', 'alice', { issueKey: '../SD-1', action: 'close' }), /Invalid request key/);
+});
+
+test('organisation names with quotes are escaped and cannot widen the search', () => {
+  const jql = customerJql('alice', PROJECT, [{ name: 'Acme") OR project = 1 OR ("' }]);
+  assert.deepEqual(parseCustomerJql(jql).orgs, ['Acme") OR project = 1 OR ("']);
+  assert.equal(escapeJql('a\\"b'), 'a\\\\\\"b');
+  assert.throws(() => customerJql('', PROJECT), /signed in/);
+});
+
+test('close runs only the transition into the admin-chosen status, never a name match', async () => {
+  seed({ transitions: { 'SD-1': [
+    transition('11', 'Reopen closed request', STATUS.reopened, 'Reopened'),
+    transition('21', 'Resolve', STATUS.resolved, 'Resolved'),
+    transition('31', 'Customer close', STATUS.closed, 'Closed')
+  ] } });
+  const result = await call('performRequestAction', 'alice', { issueKey: 'SD-1', action: 'close' });
+  assert.equal(result.transition.id, '31');
+  const posted = jira.writes().find((w) => w.path === '/rest/api/3/issue/SD-1/transitions');
+  assert.deepEqual(posted.body, { transition: { id: '31' } });
+});
+
+test('escalate is refused when only look-alike transitions exist', async () => {
+  seed({ transitions: { 'SD-1': [transition('41', 'De-escalate', STATUS.open, 'Open')] } });
+  await assert.rejects(call('performRequestAction', 'alice', { issueKey: 'SD-1', action: 'escalate' }), /cannot be escalated/);
+  assert.equal(jira.writes().length, 0);
+});
+
+test('actions are inert when the admin has not chosen target statuses', async () => {
+  seed({ selfService: { customerActions: { closeRequest: true, escalate: true } }, transitions: { 'SD-1': [transition('31', 'Close', STATUS.closed, 'Closed')] } });
+  await assert.rejects(call('performRequestAction', 'alice', { issueKey: 'SD-1', action: 'close' }), /not enabled/);
+  assert.equal(jira.writes().length, 0);
+});
+
+test('transitions that need a screen field without a default are not offered', async () => {
+  seed({ transitions: { 'SD-1': [transition('31', 'Close', STATUS.closed, 'Closed', { resolution: { required: true, hasDefaultValue: false } })] } });
+  await assert.rejects(call('performRequestAction', 'alice', { issueKey: 'SD-1', action: 'close' }), /cannot be closed/);
+  const detail = await call('getRequestDetail', 'alice', { issueKey: 'SD-1' });
+  assert.equal(detail.actions.closeRequest, false);
+});
+
+test('customer cannot act on another customer\'s request', async () => {
+  seed({ transitions: { 'SD-2': [transition('31', 'Close', STATUS.closed, 'Closed')] } });
+  await assert.rejects(call('performRequestAction', 'alice', { issueKey: 'SD-2', action: 'close' }), /not available/);
+  assert.equal(jira.writes().length, 0);
+});
+
+test('successful action leaves an internal audit note naming the customer', async () => {
+  seed({ transitions: { 'SD-1': [transition('31', 'Close', STATUS.closed, 'Closed')] } });
+  await call('performRequestAction', 'alice', { issueKey: 'SD-1', action: 'close' });
+  const comment = jira.writes().find((w) => w.path === '/rest/api/3/issue/SD-1/comment');
+  assert.ok(comment, 'audit comment written');
+  assert.deepEqual(comment.body.properties, [{ key: 'sd.public.comment', value: { internal: true } }]);
+  assert.match(JSON.stringify(comment.body.body), /alice name \(account alice\) closed this request/);
+});
+
+test('audit notes can be switched off by the admin', async () => {
+  seed({ selfService: { customerActions: { closeRequest: true, closeStatusIds: [STATUS.closed], auditComments: false } }, transitions: { 'SD-1': [transition('31', 'Close', STATUS.closed, 'Closed')] } });
+  await call('performRequestAction', 'alice', { issueKey: 'SD-1', action: 'close' });
+  assert.equal(jira.writes().some((w) => w.path.endsWith('/comment')), false);
+});
+
+test('field edits sent by the portal UI reach Jira with values shaped per field type', async () => {
+  const result = await call('updateRequestFields', 'alice', { issueKey: 'SD-1', fields: {
+    customfield_text: 'PO-1234', customfield_notes: 'Line one\nLine two', customfield_due: '2026-10-01',
+    customfield_locked: 999, summary: 'hijacked'
+  } });
+  assert.deepEqual(result.updatedFieldIds.sort(), ['customfield_due', 'customfield_notes', 'customfield_text']);
+  const put = jira.writes().find((w) => w.method === 'PUT');
+  assert.equal(put.body.fields.customfield_text, 'PO-1234');
+  assert.equal(put.body.fields.customfield_due, '2026-10-01');
+  assert.equal(put.body.fields.customfield_notes.type, 'doc');
+  assert.equal('customfield_locked' in put.body.fields, false);
+  assert.equal('summary' in put.body.fields, false);
+});
+
+test('invalid field values are rejected before anything is written', async () => {
+  await assert.rejects(call('updateRequestFields', 'alice', { issueKey: 'SD-1', fields: { customfield_due: '2026-02-30' } }), /valid date/);
+  await assert.rejects(call('updateRequestFields', 'alice', { issueKey: 'SD-1', fields: { customfield_text: 'x'.repeat(300) } }), /255 characters/);
+  await assert.rejects(call('updateRequestFields', 'alice', { issueKey: 'SD-1', fields: { summary: 'only disallowed' } }), /No permitted editable fields/);
+  assert.equal(jira.writes().length, 0);
+});
+
+test('customer cannot edit another customer\'s request', async () => {
+  await assert.rejects(call('updateRequestFields', 'alice', { issueKey: 'SD-2', fields: { customfield_text: 'x' } }), /not available/);
+  assert.equal(jira.writes().length, 0);
+});
+
+test('CSV export returns only the customer\'s visible requests', async () => {
+  const exported = await call('getExportRequests', 'alice');
+  assert.deepEqual(exported.values.map((r) => r.issueKey).sort(), ['SD-1', 'SD-3']);
+});
+
+test('reports cover every visible request across pages and nothing outside the boundary', async () => {
+  const mine = Array.from({ length: 250 }, (_, i) => issue(`SD-${i + 1}`, 'alice', { created: new Date(Date.UTC(2026, 5, 1) + i * 3600000).toISOString() }));
+  const others = Array.from({ length: 40 }, (_, i) => issue(`SD-${i + 1000}`, 'bob'));
+  seed({ issues: [...mine, ...others], selfService: { reporting: { enabled: true } } });
+  const dashboard = await call('getDashboard', 'alice');
+  assert.equal(dashboard.selfService.report.total, 250);
+  assert.deepEqual(dashboard.selfService.reportDataset, { count: 250, truncated: false, cap: 1000 });
+});
+
+test('reports disclose truncation at the 1,000-request safety cap', async () => {
+  seed({ issues: Array.from({ length: 1005 }, (_, i) => issue(`SD-${i + 1}`, 'alice')), selfService: { reporting: { enabled: true } } });
+  const dashboard = await call('getDashboard', 'alice');
+  assert.equal(dashboard.selfService.reportDataset.count, 1000);
+  assert.equal(dashboard.selfService.reportDataset.truncated, true);
+});
+
+test('unauthenticated calls are refused', async () => {
+  await assert.rejects(call('getDashboard', undefined), /signed in/);
+  await assert.rejects(call('getRequestDetail', undefined, { issueKey: 'SD-1' }), /signed in/);
+});

@@ -1,4 +1,4 @@
-import { MAX_DETAIL_FIELDS, MAX_REQUEST_COLUMNS, normalizePortalField } from './self-service-contract.js';
+import { MAX_DETAIL_FIELDS, MAX_REQUEST_COLUMNS, normalizePortalField, normalizeSelfServiceConfig } from './self-service-contract.js';
 
 const safeArray = (value) => Array.isArray(value) ? value : [];
 const safeString = (value) => value == null ? '' : String(value).trim();
@@ -32,6 +32,7 @@ export function buildSelfServiceFieldCatalogue(fields = []) {
       id: safeString(field.id),
       name: safeString(field.name).slice(0, 100),
       type: safeString(field.type || field?.jiraSchema?.type),
+      custom: safeString(field.custom || field?.jiraSchema?.custom),
       editableSupported: canCustomerEditField(field)
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -44,6 +45,36 @@ export function validateSelfServiceFields(fields = []) {
   const ids = normalized.map((field) => field.id);
   if (new Set(ids).size !== ids.length) throw new Error('A customer-visible field can only be configured once.');
   return normalized;
+}
+
+// Shape persisted in each experience; derived values (listFields,
+// contractVersion) are rebuilt by normalizeSelfServiceConfig when read.
+export function normalizeStoredSelfService(raw = {}) {
+  const { contractVersion, listFields, ...stored } = normalizeSelfServiceConfig(raw && typeof raw === 'object' ? raw : {});
+  return stored;
+}
+
+// Publish-time policy: only fields customers can already see on this service
+// desk may be exposed, schema types come from Jira rather than the browser,
+// unsupported types are forced read-only, and customer actions may only target
+// statuses that exist in the project.
+export function applySelfServicePolicy(raw = {}, { catalogue = [], statuses = [] } = {}) {
+  const known = new Map(safeArray(catalogue).map((field) => [safeString(field.id), field]));
+  const fields = validateSelfServiceFields(safeArray(raw?.fields))
+    .filter((field) => known.has(field.id))
+    .map((field) => ({ ...field, type: safeString(known.get(field.id).type), custom: safeString(known.get(field.id).custom) }));
+  const statusIds = new Set(safeArray(statuses).map((status) => safeString(status?.id)));
+  const actions = raw?.customerActions || {};
+  const keepStatuses = (ids) => safeArray(ids).map(safeString).filter((id) => statusIds.has(id));
+  return normalizeStoredSelfService({
+    ...raw,
+    fields: enforceEditableFieldPolicy(fields, catalogue),
+    customerActions: {
+      ...actions,
+      closeStatusIds: keepStatuses(actions.closeStatusIds),
+      escalateStatusIds: keepStatuses(actions.escalateStatusIds)
+    }
+  });
 }
 
 export function enforceEditableFieldPolicy(configuredFields = [], catalogue = []) {
