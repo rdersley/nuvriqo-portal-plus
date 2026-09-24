@@ -96,7 +96,7 @@ export function buildCustomerReport(requests = [], now = Date.now()) {
     if (isResolved(request)) {
       resolved += 1;
       const created = parseDate(request.created || request?.createdDate?.iso8601);
-      const resolvedAt = parseDate(request.resolved || request.resolutionDate || request.updated || request?.updatedDate?.iso8601);
+      const resolvedAt = parseDate(request.resolved || request.resolutionDate || request?.resolvedDate?.iso8601 || request.updated || request?.updatedDate?.iso8601);
       if (created != null && resolvedAt != null && resolvedAt >= created) {
         resolutionMs += resolvedAt - created;
         resolutionSamples += 1;
@@ -108,6 +108,30 @@ export function buildCustomerReport(requests = [], now = Date.now()) {
     if (slaState === 'breached') slaBreached += 1;
   }
 
+  const trendDays = 30;
+  const dayMs = 86400000;
+  const endDay = new Date(now); endDay.setUTCHours(0,0,0,0);
+  const startDay = new Date(endDay.getTime() - ((trendDays - 1) * dayMs));
+  const trend = Array.from({ length: trendDays }, (_, index) => {
+    const day = new Date(startDay.getTime() + (index * dayMs));
+    return { date: day.toISOString().slice(0,10), created: 0, resolved: 0 };
+  });
+  const trendByDate = new Map(trend.map((row) => [row.date, row]));
+  for (const request of values) {
+    const created = parseDate(request.created || request?.createdDate?.iso8601);
+    if (created != null) {
+      const key = new Date(created).toISOString().slice(0,10);
+      if (trendByDate.has(key)) trendByDate.get(key).created += 1;
+    }
+    if (isResolved(request)) {
+      const resolvedAt = parseDate(request.resolved || request.resolutionDate || request?.resolvedDate?.iso8601 || request.updated || request?.updatedDate?.iso8601);
+      if (resolvedAt != null) {
+        const key = new Date(resolvedAt).toISOString().slice(0,10);
+        if (trendByDate.has(key)) trendByDate.get(key).resolved += 1;
+      }
+    }
+  }
+
   return {
     total: values.length,
     created: values.length,
@@ -115,6 +139,7 @@ export function buildCustomerReport(requests = [], now = Date.now()) {
     open: values.length - resolved,
     byStatus: [...byStatus.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label)),
     byRequestType: [...byRequestType.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label)),
+    trend,
     sla: { met: slaMet, breached: slaBreached, measured: slaMet + slaBreached },
     averageResolutionMs: resolutionSamples ? Math.round(resolutionMs / resolutionSamples) : null,
     generatedAt: new Date(now).toISOString()
