@@ -24,7 +24,7 @@ const json = (status, body) => ({
   text: async () => (body === undefined ? '' : JSON.stringify(body))
 });
 
-export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null } = {}) {
+export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {} } = {}) {
   const calls = [];
   const orgName = (id) => organizations.find((org) => org.id === id)?.name;
 
@@ -81,7 +81,10 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       if (/^\/rest\/api\/3\/project\/[^/]+\/statuses$/.test(url.pathname)) return json(200, [{ statuses: discovery.statuses }]);
     }
 
-    const transitionPath = /^\/rest\/api\/3\/issue\/([^/]+)\/transitions$/.exec(url.pathname);
+    const editMetaPath = /^\/rest\/api\/3\/issue\/([^/]+)\/editmeta$/.exec(url.pathname);
+    if (editMetaPath && method === 'GET') return json(200, { fields: editMeta[editMetaPath[1]] || {} });
+
+    const transitionPath =/^\/rest\/api\/3\/issue\/([^/]+)\/transitions$/.exec(url.pathname);
     if (transitionPath && method === 'GET') return json(200, { transitions: transitions[transitionPath[1]] || [] });
     if (transitionPath && method === 'POST') return json(204);
     if (/^\/rest\/api\/3\/issue\/[^/]+\/comment$/.test(url.pathname) && method === 'POST') return json(201, { id: '1' });

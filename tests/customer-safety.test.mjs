@@ -55,7 +55,7 @@ function experience(selfService = {}) {
   };
 }
 
-function seed({ issues, transitions = {}, selfService } = {}) {
+function seed({ issues, transitions = {}, selfService, editMeta = {} } = {}) {
   store.clear();
   store.set(`portalplus:config:${PROJECT}`, experience(selfService));
   jira = createFakeJira({
@@ -68,7 +68,8 @@ function seed({ issues, transitions = {}, selfService } = {}) {
       issue('SD-4', 'carol'),
       issue('SD-5', 'dave', { orgIds: ['200'] })
     ],
-    transitions
+    transitions,
+    editMeta
   });
 }
 
@@ -192,6 +193,37 @@ test('customer cannot edit another customer\'s request', async () => {
 test('CSV export returns only the customer\'s visible requests', async () => {
   const exported = await call('getExportRequests', 'alice');
   assert.deepEqual(exported.values.map((r) => r.issueKey).sort(), ['SD-1', 'SD-3']);
+});
+
+test('request detail offers editing only where Jira allows it, with real dropdown options', async () => {
+  seed({
+    issues: [issue('SD-1', 'alice', { fields: {
+      customfield_notes: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Existing note' }] }] },
+      customfield_size: { id: '20', value: 'Large' }
+    } })],
+    selfService: { fields: [
+      { id: 'customfield_notes', name: 'Notes', type: 'string', custom: 'com.atlassian.jira.plugin.system.customfieldtypes:textarea', mode: 'editable', editableAfterSubmission: true },
+      { id: 'customfield_size', name: 'Size', type: 'option', mode: 'editable', editableAfterSubmission: true },
+      { id: 'customfield_text', name: 'Reference', type: 'string', mode: 'editable', editableAfterSubmission: true }
+    ] },
+    editMeta: { 'SD-1': {
+      customfield_notes: {},
+      customfield_size: { allowedValues: [{ id: '10', value: 'Small' }, { id: '20', value: 'Large' }] }
+    } }
+  });
+  const detail = await call('getRequestDetail', 'alice', { issueKey: 'SD-1' });
+  const byId = Object.fromEntries(detail.fields.map((f) => [f.id, f]));
+  assert.equal(byId.customfield_notes.value, 'Existing note', 'multi-line text is shown, not blank');
+  assert.equal(byId.customfield_notes.editableAfterSubmission, true);
+  assert.deepEqual(byId.customfield_size.allowedValues, [{ id: '10', value: 'Small' }, { id: '20', value: 'Large' }]);
+  assert.equal(byId.customfield_size.optionId, '20');
+  assert.equal(byId.customfield_text.editableAfterSubmission, false, 'not on the edit screen, so read-only');
+});
+
+test('dropdown edits are sent to Jira as option ids', async () => {
+  seed({ selfService: { fields: [{ id: 'customfield_size', name: 'Size', type: 'option', mode: 'editable', editableAfterSubmission: true }] } });
+  await call('updateRequestFields', 'alice', { issueKey: 'SD-1', fields: { customfield_size: { id: '10' } } });
+  assert.deepEqual(jira.writes().find((w) => w.method === 'PUT').body.fields, { customfield_size: { id: '10' } });
 });
 
 test('reports cover every visible request across pages and nothing outside the boundary', async () => {

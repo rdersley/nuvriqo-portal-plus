@@ -48,6 +48,27 @@ async function writeAuditComment(key,request,accountId,summary,actions,jira){
   }catch(_){return false;}
 }
 
+// Jira's edit metadata says which fields can be changed on this particular
+// request (screens differ by request type) and lists dropdown options.
+async function loadEditMeta(key,jira){
+  try{
+    const response=await jira(route`/rest/api/3/issue/${key}/editmeta`,{headers:{Accept:'application/json'}});
+    if(!response.ok)return null;
+    const payload=await response.json();
+    return payload?.fields&&typeof payload.fields==='object'?payload.fields:null;
+  }catch(_){return null;}
+}
+
+function applyEditMeta(fields,meta){
+  return fields.map((field)=>{
+    if(!(field.mode==='editable'&&field.editableAfterSubmission))return field;
+    const entry=meta?.[field.id];
+    if(!entry)return{...field,mode:'read-only',editableAfterSubmission:false};
+    const allowed=safeArray(entry.allowedValues).slice(0,200).map((option)=>({id:safeString(option?.id),value:safeString(option?.value??option?.name)})).filter((option)=>option.id);
+    return allowed.length?{...field,allowedValues:allowed}:field;
+  });
+}
+
 export async function buildLiveRequestDetail({request,experience={},jira=appJira}={}){
   const key=requireVisible(request),config=experience?.selfService||{},slaEnabled=config?.sla?.enabled===true;
   const slaResult=await loadRequestSlas(key,slaEnabled,jira);
@@ -56,8 +77,11 @@ export async function buildLiveRequestDetail({request,experience={},jira=appJira
   const actions=normalizeCustomerActions(config.customerActions);
   let transitions=[];
   if(actions.closeRequest||actions.escalate){try{transitions=await loadTransitions(key,jira);}catch(_){transitions=[];}}
+  const fields=model.capabilities.hasEditableFields?applyEditMeta(model.fields,await loadEditMeta(key,jira)):model.fields;
   return{
     ...model,
+    fields,
+    capabilities:{...model.capabilities,hasEditableFields:fields.some((field)=>field.mode==='editable'&&field.editableAfterSubmission)},
     slas:slaResult.values,
     slaAvailable:slaResult.available,
     slaReason:slaResult.reason,

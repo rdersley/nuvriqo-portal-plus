@@ -8,9 +8,19 @@ function requestFieldValue(request, fieldId) {
   return row?.value ?? null;
 }
 
+// Plain text from an Atlassian Document Format value (multi-line text fields).
+export function adfToText(node) {
+  if (!node || typeof node !== 'object') return '';
+  if (node.type === 'text') return safeString(node.text);
+  if (node.type === 'hardBreak') return '\n';
+  const inner = safeArray(node.content).map(adfToText).join('');
+  return ['paragraph', 'heading', 'listItem', 'codeBlock', 'blockquote'].includes(node.type) ? `${inner}\n\n` : inner;
+}
+
 function displayValue(value) {
   if (value == null) return '';
   if (Array.isArray(value)) return value.map(displayValue).filter(Boolean).join(', ');
+  if (typeof value === 'object' && value.type === 'doc') return adfToText(value).replace(/\n{3,}/g, '\n\n').trim();
   if (typeof value === 'object') {
     for (const key of ['label', 'displayName', 'name', 'value']) {
       if (value[key] != null && typeof value[key] !== 'object') return safeString(value[key]);
@@ -24,15 +34,21 @@ export function buildCustomerRequestDetails(request, selfServiceConfig = {}) {
   const config = normalizeSelfServiceConfig(selfServiceConfig);
   return config.fields
     .filter((field) => field.showInDetails)
-    .map((field) => ({
-      id: field.id,
-      name: field.name,
-      mode: field.mode,
-      editableAfterSubmission: field.editableAfterSubmission,
-      requiredWhenEditing: field.requiredWhenEditing,
-      helpText: field.helpText,
-      value: displayValue(requestFieldValue(request, field.id))
-    }));
+    .map((field) => {
+      const raw = requestFieldValue(request, field.id);
+      return {
+        id: field.id,
+        name: field.name,
+        type: field.type,
+        custom: field.custom,
+        mode: field.mode,
+        editableAfterSubmission: field.editableAfterSubmission,
+        requiredWhenEditing: field.requiredWhenEditing,
+        helpText: field.helpText,
+        value: displayValue(raw),
+        optionId: raw && typeof raw === 'object' && !Array.isArray(raw) && raw.id != null ? safeString(raw.id) : ''
+      };
+    });
 }
 
 export function buildRequestDetailModel(request, selfServiceConfig = {}) {
