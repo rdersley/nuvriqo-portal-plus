@@ -24,7 +24,10 @@ const { handler: portal } = await import('../src/portal-resolver.js');
 
 const context = { extension: { project: { id: PROJECT, key: 'SD' } }, environmentType: 'DEVELOPMENT' };
 const callAdmin = (functionKey, payload = {}) => admin({ call: { functionKey, payload }, context }, { principal: { accountId: 'admin' } });
-const callPortal = (functionKey, accountId, payload = {}) => portal({ call: { functionKey, payload }, context }, { principal: { accountId } });
+const portalContext = (extension) => ({ extension, environmentType: 'DEVELOPMENT' });
+const callPortalOn = (extension, functionKey, accountId, payload = {}) => portal({ call: { functionKey, payload }, context: portalContext(extension) }, { principal: { accountId } });
+// As in Jira: the portal header gets portal.id (service desk 35 -> PROJECT), not a project.
+const callPortal = (functionKey, accountId, payload = {}) => callPortalOn({ page: 'portal', portal: { id: 35 } }, functionKey, accountId, payload);
 
 const schema = (type, custom = '') => ({ type, ...(custom ? { custom } : {}) });
 
@@ -63,6 +66,13 @@ test('self-service settings survive publishing and reach customers', async () =>
   assert.equal(dashboard.selfService.reporting.enabled, true);
   assert.equal(dashboard.selfService.customerActions.closeRequest, true);
   assert.deepEqual(dashboard.selfService.fields.map((f) => [f.id, f.mode, f.type]), [['customfield_ref', 'editable', 'string']]);
+});
+
+test('after publishing, the Help Center page shows the published experience', async () => {
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [experience({})] });
+  const dashboard = await callPortalOn({ page: 'help_center' }, 'getDashboard', 'alice');
+  assert.equal(dashboard.audienceAllowed, true);
+  assert.equal(dashboard.experience.displayName, 'Support');
 });
 
 test('drafts keep self-service settings too', async () => {

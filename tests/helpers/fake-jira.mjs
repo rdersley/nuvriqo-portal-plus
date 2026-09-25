@@ -24,7 +24,7 @@ const json = (status, body) => ({
   text: async () => (body === undefined ? '' : JSON.stringify(body))
 });
 
-export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {}, statusHistory = {} } = {}) {
+export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {}, statusHistory = {}, serviceDesks = { 35: '10000' } } = {}) {
   const calls = [];
   const orgName = (id) => organizations.find((org) => org.id === id)?.name;
 
@@ -70,6 +70,12 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       return json(200, { issues: page.map(toIssue), nextPageToken: next, isLast: !next });
     }
     if (url.pathname.startsWith('/rest/api/3/project/') && url.pathname.includes('/properties/')) return json(404, { errorMessages: ['not found'] });
+
+    const serviceDeskPath = /^\/rest\/servicedeskapi\/servicedesk\/(\d+)$/.exec(url.pathname);
+    if (serviceDeskPath && method === 'GET') {
+      const projectId = serviceDesks[serviceDeskPath[1]];
+      return projectId ? json(200, { id: serviceDeskPath[1], projectId }) : json(404, { errorMessage: 'Service desk not found' });
+    }
 
     // Admin discovery: { serviceDesk, requestTypes, fieldsByRequestType, statuses }
     if (discovery && method === 'GET') {

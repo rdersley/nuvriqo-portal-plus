@@ -25,8 +25,13 @@ mock.module('@forge/kvs', {
 const { handler } = await import('../src/portal-resolver.js');
 const { customerJql, escapeJql } = await import('../src/customer-visibility.js');
 
-const call = (functionKey, accountId, payload = {}) =>
-  handler({ call: { functionKey, payload }, context: { extension: { project: { id: PROJECT } }, environmentType: 'DEVELOPMENT' } }, { principal: { accountId } });
+// The JSM portal header only receives portal.id (the service desk ID), never a
+// project ID; service desk 35 belongs to PROJECT in the fake Jira.
+const PORTAL_PAGE = { type: 'jiraServiceManagement:portalHeader', page: 'portal', portal: { id: 35 } };
+const HELP_CENTER = { type: 'jiraServiceManagement:portalHeader', page: 'help_center' };
+const callOn = (extension, functionKey, accountId, payload = {}) =>
+  handler({ call: { functionKey, payload }, context: { extension, environmentType: 'DEVELOPMENT' } }, { principal: { accountId } });
+const call = (functionKey, accountId, payload = {}) => callOn(PORTAL_PAGE, functionKey, accountId, payload);
 
 const issue = (key, reporter, { orgIds = [], created = '2026-09-01T10:00:00.000+0000', statusId = STATUS.open, fields = {} } = {}) =>
   ({ key, projectId: PROJECT, reporter, reporterName: `${reporter} name`, orgIds, created, statusId, statusName: 'Open', summary: `${key} summary`, fields });
@@ -256,6 +261,25 @@ test('reports disclose truncation at the 1,000-request safety cap', async () => 
   const dashboard = await call('getDashboard', 'alice');
   assert.equal(dashboard.selfService.reportDataset.count, 1000);
   assert.equal(dashboard.selfService.reportDataset.truncated, true);
+});
+
+test('portal pages resolve the project from the service desk, then use the cache', async () => {
+  assert.deepEqual(keys(await call('getDashboard', 'alice')), ['SD-1', 'SD-3']);
+  const lookups = () => jira.calls.filter((c) => c.path === '/rest/servicedeskapi/servicedesk/35').length;
+  assert.equal(lookups(), 1);
+  await call('getDashboard', 'alice');
+  assert.equal(lookups(), 1, 'second load uses the cached project');
+});
+
+test('Help Center falls back to the most recently published project', async () => {
+  assert.equal((await callOn(HELP_CENTER, 'getDashboard', 'alice')).audienceAllowed, false, 'nothing published yet');
+  store.set('portalplus:projects', { 99999: '2026-01-01T00:00:00.000Z', [PROJECT]: '2026-09-25T10:00:00.000Z' });
+  assert.deepEqual(keys(await callOn(HELP_CENTER, 'getDashboard', 'alice')), ['SD-1', 'SD-3']);
+});
+
+test('an unknown service desk shows nothing rather than another project', async () => {
+  const result = await callOn({ page: 'portal', portal: { id: 77 } }, 'getDashboard', 'alice');
+  assert.equal(result.audienceAllowed, false);
 });
 
 test('unauthenticated calls are refused', async () => {
