@@ -55,7 +55,7 @@ function experience(selfService = {}) {
   };
 }
 
-function seed({ issues, transitions = {}, selfService, editMeta = {} } = {}) {
+function seed({ issues, transitions = {}, selfService, editMeta = {}, statusHistory = {} } = {}) {
   store.clear();
   store.set(`portalplus:config:${PROJECT}`, experience(selfService));
   jira = createFakeJira({
@@ -69,7 +69,8 @@ function seed({ issues, transitions = {}, selfService, editMeta = {} } = {}) {
       issue('SD-5', 'dave', { orgIds: ['200'] })
     ],
     transitions,
-    editMeta
+    editMeta,
+    statusHistory
   });
 }
 
@@ -224,6 +225,21 @@ test('dropdown edits are sent to Jira as option ids', async () => {
   seed({ selfService: { fields: [{ id: 'customfield_size', name: 'Size', type: 'option', mode: 'editable', editableAfterSubmission: true }] } });
   await call('updateRequestFields', 'alice', { issueKey: 'SD-1', fields: { customfield_size: { id: '10' } } });
   assert.deepEqual(jira.writes().find((w) => w.method === 'PUT').body.fields, { customfield_size: { id: '10' } });
+});
+
+test('request detail shows a progress timeline from JSM status history, oldest first', async () => {
+  seed({ statusHistory: { 'SD-1': [
+    { status: 'Waiting for customer', statusCategory: 'INDETERMINATE', statusDate: { iso8601: '2026-09-03T09:00:00+0000' } },
+    { status: 'In progress', statusCategory: 'INDETERMINATE', statusDate: { iso8601: '2026-09-02T09:00:00+0000' } }
+  ] } });
+  const detail = await call('getRequestDetail', 'alice', { issueKey: 'SD-1' });
+  assert.deepEqual(detail.timeline.map((e) => e.status), ['Request raised', 'In progress', 'Waiting for customer']);
+});
+
+test('timeline falls back to the raised date when status history is unavailable', async () => {
+  seed({ statusHistory: { 'SD-1': 'error' } });
+  const detail = await call('getRequestDetail', 'alice', { issueKey: 'SD-1' });
+  assert.deepEqual(detail.timeline.map((e) => e.status), ['Request raised']);
 });
 
 test('reports cover every visible request across pages and nothing outside the boundary', async () => {

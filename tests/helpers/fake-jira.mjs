@@ -24,7 +24,7 @@ const json = (status, body) => ({
   text: async () => (body === undefined ? '' : JSON.stringify(body))
 });
 
-export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {} } = {}) {
+export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {}, statusHistory = {} } = {}) {
   const calls = [];
   const orgName = (id) => organizations.find((org) => org.id === id)?.name;
 
@@ -90,6 +90,8 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
     if (/^\/rest\/api\/3\/issue\/[^/]+\/comment$/.test(url.pathname) && method === 'POST') return json(201, { id: '1' });
     if (/^\/rest\/api\/3\/issue\/[^/]+$/.test(url.pathname) && method === 'PUT') return json(204);
     if (/^\/rest\/servicedeskapi\/request\/[^/]+\/sla$/.test(url.pathname)) return json(200, { values: [] });
+    const statusPath = /^\/rest\/servicedeskapi\/request\/([^/]+)\/status$/.exec(url.pathname);
+    if (statusPath) return statusHistory[statusPath[1]] === 'error' ? json(500, {}) : json(200, { values: statusHistory[statusPath[1]] || [] });
 
     return json(404, { errorMessages: [`fake-jira: no route for ${method} ${url.pathname}`] });
   }

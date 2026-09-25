@@ -48,6 +48,19 @@ async function writeAuditComment(key,request,accountId,summary,actions,jira){
   }catch(_){return false;}
 }
 
+// Customer-facing status history from JSM (portal status names, not internal
+// workflow names), oldest first, starting with when the request was raised.
+export async function loadStatusTimeline(key,request={},jira=appJira){
+  const raised={status:'Request raised',category:'new',date:safeString(request?.createdDate?.iso8601)};
+  try{
+    const response=await jira(route`/rest/servicedeskapi/request/${key}/status?limit=50`,{headers:{Accept:'application/json'}});
+    if(!response.ok)return{events:raised.date?[raised]:[],available:false};
+    const payload=await response.json();
+    const changes=safeArray(payload?.values).map((entry)=>({status:safeString(entry?.status),category:safeString(entry?.statusCategory).toLowerCase(),date:safeString(entry?.statusDate?.iso8601)})).filter((entry)=>entry.status&&entry.date).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
+    return{events:[...(raised.date?[raised]:[]),...changes],available:true};
+  }catch(_){return{events:raised.date?[raised]:[],available:false};}
+}
+
 // Jira's edit metadata says which fields can be changed on this particular
 // request (screens differ by request type) and lists dropdown options.
 async function loadEditMeta(key,jira){
@@ -77,10 +90,12 @@ export async function buildLiveRequestDetail({request,experience={},jira=appJira
   const actions=normalizeCustomerActions(config.customerActions);
   let transitions=[];
   if(actions.closeRequest||actions.escalate){try{transitions=await loadTransitions(key,jira);}catch(_){transitions=[];}}
-  const fields=model.capabilities.hasEditableFields?applyEditMeta(model.fields,await loadEditMeta(key,jira)):model.fields;
+  const [meta,timeline]=await Promise.all([model.capabilities.hasEditableFields?loadEditMeta(key,jira):null,loadStatusTimeline(key,request,jira)]);
+  const fields=model.capabilities.hasEditableFields?applyEditMeta(model.fields,meta):model.fields;
   return{
     ...model,
     fields,
+    timeline:timeline.events,
     capabilities:{...model.capabilities,hasEditableFields:fields.some((field)=>field.mode==='editable'&&field.editableAfterSubmission)},
     slas:slaResult.values,
     slaAvailable:slaResult.available,
