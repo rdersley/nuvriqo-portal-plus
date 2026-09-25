@@ -35,3 +35,16 @@ test('rejects unknown provider or contract version', () => {
   assert.equal(buildAssetModuleFromSnapshot({ provider: 'other', contractVersion: 1 }, ['10']), null);
   assert.equal(buildAssetModuleFromSnapshot({ provider: 'nuvriqo-asset-manager', contractVersion: 2 }, ['10']), null);
 });
+
+test('counts Asset Manager "In Use" devices as in service', () => {
+  const module = buildAssetModuleFromSnapshot({
+    provider: 'nuvriqo-asset-manager', contractVersion: 1,
+    organisations: [{ id: '10', assets: [
+      { id: 'a1', name: 'Handheld', status: 'In Use' },
+      { id: 'a2', name: 'Spare', status: 'Available' },
+      { id: 'a3', name: 'Broken', status: 'Repair' }
+    ] }]
+  }, ['10']);
+  assert.equal(module.counters.find((x) => x.id === 'in-service').value, 1);
+  assert.equal(module.counters.find((x) => x.id === 'attention').value, 1);
+});
