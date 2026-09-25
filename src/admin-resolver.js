@@ -3,9 +3,9 @@ import api,{route} from '@forge/api';
 import {kvs} from '@forge/kvs';
 import {applySelfServicePolicy,buildSelfServiceFieldCatalogue,normalizeStoredSelfService} from './self-service-admin.js';
 import {MAX_REQUEST_COLUMNS} from './self-service-contract.js';
+import {licenseState} from './licensing.js';
 const resolver=new Resolver(),CONFIG_VERSION=12,MAX_CUSTOM_COLUMNS=MAX_REQUEST_COLUMNS,MAX_EXPERIENCES=12,ROUTING_POLICY='most-specific-then-order';
 const publishedKey=p=>`portalplus:config:${p}`,draftKey=p=>`portalplus:draft:${p}`,uid=(p='item')=>`${p}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-function licenseState(c){const e=String(c?.environmentType||'').toLowerCase();return e!=='production'?{active:true,testEnvironment:true}:{active:c?.license?.active===true,testEnvironment:false};}
 async function jsonOrError(r,l){if(!r.ok)throw new Error(`${l} failed (${r.status}): ${await r.text()}`);return r.json();}
 async function getServiceDeskForProject(p){const d=await jsonOrError(await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk?projectId=${p}&limit=50`,{headers:{Accept:'application/json'}}),'Service desk discovery');return(d.values||[]).find(x=>String(x.projectId)===String(p))||d.values?.[0]||null;}
 async function getRequestTypes(s){const d=await jsonOrError(await api.asApp().requestJira(route`/rest/servicedeskapi/servicedesk/${s}/requesttype?limit=100`,{headers:{Accept:'application/json'}}),'Request type discovery');return Array.isArray(d.values)?d.values:[];}
