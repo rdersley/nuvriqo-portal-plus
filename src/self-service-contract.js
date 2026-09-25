@@ -96,7 +96,10 @@ const parseDate = (value) => {
   const time = Date.parse(value || '');
   return Number.isFinite(time) ? time : null;
 };
-const isResolved = (request) => ['closed', 'resolved', 'done', 'cancelled', 'canceled'].some((word) => requestStatus(request).toLowerCase().includes(word));
+const resolvedDateOf = (request) => request?.resolved || request?.resolutionDate || request?.resolvedDate?.iso8601 || '';
+// A resolution date is authoritative; status names are a fallback for
+// workflows that close requests without setting one.
+const isResolved = (request) => Boolean(resolvedDateOf(request)) || ['closed', 'resolved', 'done', 'cancelled', 'canceled'].some((word) => requestStatus(request).toLowerCase().includes(word));
 
 export function buildCustomerReport(requests = [], now = Date.now()) {
   const values = safeArray(requests);

@@ -44,7 +44,10 @@ export function renderReportCharts(report = {}) {
   return [
     `<article class="report-panel"><div class="report-panel-head"><strong>Requests by type</strong><span>${Number(report.total || 0)} total</span></div>${barRows(report.byRequestType)}</article>`,
     `<article class="report-panel"><div class="report-panel-head"><strong>Tickets by status</strong><span>Current view</span></div>${barRows(report.byStatus)}</article>`,
-    `<article class="report-panel"><div class="report-panel-head"><strong>SLA performance</strong><span>${measured} measured</span></div><div class="donut-wrap"><div class="donut" style="--percent:${percent}"><strong>${measured ? `${percent}%` : '—'}</strong><span>met</span></div><div class="donut-legend"><span><i class="dot met"></i>Met <b>${met}</b></span><span><i class="dot breached"></i>Breached <b>${breached}</b></span></div></div></article>`,
+    measured
+      ? `<article class="report-panel"><div class="report-panel-head"><strong>SLA performance</strong><span>${measured} measured</span></div><div class="donut-wrap"><div class="donut" style="--percent:${percent}"><strong>${percent}%</strong><span>met</span></div><div class="donut-legend"><span><i class="dot met"></i>Met <b>${met}</b></span><span><i class="dot breached"></i>Breached <b>${breached}</b></span></div></div></article>`
+      // With nothing measured, a 0% donut would render fully "breached"; show a neutral state.
+      : '<article class="report-panel"><div class="report-panel-head"><strong>SLA performance</strong><span>0 measured</span></div><div class="donut-wrap"><div class="donut empty"><strong>—</strong><span>met</span></div><div class="donut-legend"><span class="empty-mini">No completed SLA cycles in this period yet.</span></div></div></article>',
     `<article class="report-panel"><div class="report-panel-head"><strong>Created vs resolved</strong><span>Visible requests</span></div><div class="created-resolved"><div><span>Created</span><strong>${Number(report.created || report.total || 0)}</strong></div><div><span>Resolved</span><strong>${Number(report.resolved || 0)}</strong></div><div><span>Open</span><strong>${Number(report.open || 0)}</strong></div></div></article>`
   ].join('');
 }

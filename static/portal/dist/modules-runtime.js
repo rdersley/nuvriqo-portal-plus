@@ -6095,7 +6095,7 @@ Please see https://iframe-resizer.com/upgrade for more details.
     return [
       `<article class="report-panel"><div class="report-panel-head"><strong>Requests by type</strong><span>${Number(report.total || 0)} total</span></div>${barRows(report.byRequestType)}</article>`,
       `<article class="report-panel"><div class="report-panel-head"><strong>Tickets by status</strong><span>Current view</span></div>${barRows(report.byStatus)}</article>`,
-      `<article class="report-panel"><div class="report-panel-head"><strong>SLA performance</strong><span>${measured} measured</span></div><div class="donut-wrap"><div class="donut" style="--percent:${percent}"><strong>${measured ? `${percent}%` : "\u2014"}</strong><span>met</span></div><div class="donut-legend"><span><i class="dot met"></i>Met <b>${met}</b></span><span><i class="dot breached"></i>Breached <b>${breached}</b></span></div></div></article>`,
+      measured ? `<article class="report-panel"><div class="report-panel-head"><strong>SLA performance</strong><span>${measured} measured</span></div><div class="donut-wrap"><div class="donut" style="--percent:${percent}"><strong>${percent}%</strong><span>met</span></div><div class="donut-legend"><span><i class="dot met"></i>Met <b>${met}</b></span><span><i class="dot breached"></i>Breached <b>${breached}</b></span></div></div></article>` : '<article class="report-panel"><div class="report-panel-head"><strong>SLA performance</strong><span>0 measured</span></div><div class="donut-wrap"><div class="donut empty"><strong>\u2014</strong><span>met</span></div><div class="donut-legend"><span class="empty-mini">No completed SLA cycles in this period yet.</span></div></div></article>',
       `<article class="report-panel"><div class="report-panel-head"><strong>Created vs resolved</strong><span>Visible requests</span></div><div class="created-resolved"><div><span>Created</span><strong>${Number(report.created || report.total || 0)}</strong></div><div><span>Resolved</span><strong>${Number(report.resolved || 0)}</strong></div><div><span>Open</span><strong>${Number(report.open || 0)}</strong></div></div></article>`
     ].join("");
   }
@@ -6104,6 +6104,99 @@ Please see https://iframe-resizer.com/upgrade for more details.
     const items = list(module.items).slice(0, 8);
     const actions = list(module.actions).slice(0, 3);
     return `<div class="companion-card"><div class="companion-summary">${counters.map((counter) => `<div class="companion-counter"><strong>${Number(counter?.value || 0)}</strong><span>${esc(counter?.label || "")}</span></div>`).join("")}</div>${items.length ? `<div class="companion-items">${items.map((item) => `<button type="button" class="companion-item" data-url="${esc(item?.url || "")}"><span><strong>${esc(item?.title || "Item")}</strong><small>${esc(item?.subtitle || "")}</small></span><span class="companion-badge">${esc(item?.badge || item?.status || "")}</span></button>`).join("")}</div>` : `<div class="companion-empty"><strong>You're all up to date!</strong><span>${esc(module.description || "Nothing needs your attention right now.")}</span></div>`}${actions.length ? `<div class="companion-actions">${actions.map((action) => `<button type="button" class="secondary-action" data-url="${esc(action?.url || "")}">${esc(action?.label || "Open")}</button>`).join("")}</div>` : ""}</div>`;
+  }
+
+  // src/self-service-contract.js
+  var safeString = (value, fallback = "") => value == null ? fallback : String(value).trim();
+  var safeArray = (value) => Array.isArray(value) ? value : [];
+  var SELF_SERVICE_FEATURES = Object.freeze({
+    readOnlyFields: "read-only-fields",
+    editableFields: "editable-fields",
+    slaVisibility: "sla-visibility",
+    requestColumns: "request-columns",
+    audienceRequestTypes: "audience-request-types",
+    reporting: "reporting",
+    export: "export",
+    advancedSearch: "advanced-search",
+    relatedRequests: "related-requests",
+    assets: "assets",
+    customerActions: "customer-actions",
+    multiExperience: "multi-experience"
+  });
+  var requestStatus = (request) => safeString(request?.status || request?.currentStatus?.status || "Open");
+  var requestType = (request) => {
+    const value = request?.requestType;
+    return safeString((value && typeof value === "object" ? value.name : value) || "Unknown");
+  };
+  var parseDate = (value) => {
+    const time = Date.parse(value || "");
+    return Number.isFinite(time) ? time : null;
+  };
+  var resolvedDateOf = (request) => request?.resolved || request?.resolutionDate || request?.resolvedDate?.iso8601 || "";
+  var isResolved = (request) => Boolean(resolvedDateOf(request)) || ["closed", "resolved", "done", "cancelled", "canceled"].some((word) => requestStatus(request).toLowerCase().includes(word));
+  function buildCustomerReport(requests = [], now = Date.now()) {
+    const values = safeArray(requests);
+    const byStatus = /* @__PURE__ */ new Map();
+    const byRequestType = /* @__PURE__ */ new Map();
+    let resolved = 0;
+    let resolutionMs = 0;
+    let resolutionSamples = 0;
+    let slaMet = 0;
+    let slaBreached = 0;
+    for (const request of values) {
+      const status = requestStatus(request);
+      const type = requestType(request);
+      byStatus.set(status, (byStatus.get(status) || 0) + 1);
+      byRequestType.set(type, (byRequestType.get(type) || 0) + 1);
+      if (isResolved(request)) {
+        resolved += 1;
+        const created = parseDate(request.created || request?.createdDate?.iso8601);
+        const resolvedAt = parseDate(request.resolved || request.resolutionDate || request?.resolvedDate?.iso8601 || request.updated || request?.updatedDate?.iso8601);
+        if (created != null && resolvedAt != null && resolvedAt >= created) {
+          resolutionMs += resolvedAt - created;
+          resolutionSamples += 1;
+        }
+      }
+      const slaState = safeString(request?.sla?.state).toLowerCase();
+      if (slaState === "met") slaMet += 1;
+      if (slaState === "breached") slaBreached += 1;
+    }
+    const trendDays = 30;
+    const dayMs = 864e5;
+    const endDay = new Date(now);
+    endDay.setUTCHours(0, 0, 0, 0);
+    const startDay = new Date(endDay.getTime() - (trendDays - 1) * dayMs);
+    const trend = Array.from({ length: trendDays }, (_, index) => {
+      const day = new Date(startDay.getTime() + index * dayMs);
+      return { date: day.toISOString().slice(0, 10), created: 0, resolved: 0 };
+    });
+    const trendByDate = new Map(trend.map((row) => [row.date, row]));
+    for (const request of values) {
+      const created = parseDate(request.created || request?.createdDate?.iso8601);
+      if (created != null) {
+        const key = new Date(created).toISOString().slice(0, 10);
+        if (trendByDate.has(key)) trendByDate.get(key).created += 1;
+      }
+      if (isResolved(request)) {
+        const resolvedAt = parseDate(request.resolved || request.resolutionDate || request?.resolvedDate?.iso8601 || request.updated || request?.updatedDate?.iso8601);
+        if (resolvedAt != null) {
+          const key = new Date(resolvedAt).toISOString().slice(0, 10);
+          if (trendByDate.has(key)) trendByDate.get(key).resolved += 1;
+        }
+      }
+    }
+    return {
+      total: values.length,
+      created: values.length,
+      resolved,
+      open: values.length - resolved,
+      byStatus: [...byStatus.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label)),
+      byRequestType: [...byRequestType.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label)),
+      trend,
+      sla: { met: slaMet, breached: slaBreached, measured: slaMet + slaBreached },
+      averageResolutionMs: resolutionSamples ? Math.round(resolutionMs / resolutionSamples) : null,
+      generatedAt: new Date(now).toISOString()
+    };
   }
 
   // static/portal/src/modules-runtime.js
@@ -6132,28 +6225,34 @@ Please see https://iframe-resizer.com/upgrade for more details.
       button.onclick = () => navigate(button.dataset.url);
     });
   }
+  function reportForPeriod(selfService, period) {
+    const rows = Array.isArray(selfService?.reportRows) ? selfService.reportRows : null;
+    if (!rows) return selfService?.report || null;
+    if (period === "all") return buildCustomerReport(rows);
+    const since = Date.now() - Number(period) * 864e5;
+    return buildCustomerReport(rows.filter((row) => Date.parse(row.created || "") >= since));
+  }
   function renderReports(selfService) {
     const section = q("reports-section");
     const cards = q("report-cards");
     const charts = q("report-charts");
-    const report = selfService?.report;
-    if (!section || !cards || !charts || !selfService?.reporting?.enabled || !report) {
+    const select = q("report-period");
+    if (!section || !cards || !charts || !selfService?.reporting?.enabled || !(selfService.report || selfService.reportRows)) {
       if (section) section.hidden = true;
       return;
     }
-    cards.innerHTML = renderReportCards(report);
-    charts.innerHTML = renderReportCharts(report);
+    const draw = () => {
+      const report = reportForPeriod(selfService, select?.value || "all");
+      if (!report) return;
+      cards.innerHTML = renderReportCards(report);
+      charts.innerHTML = renderReportCharts(report);
+    };
+    if (select) {
+      select.hidden = !Array.isArray(selfService.reportRows);
+      select.onchange = draw;
+    }
+    draw();
     section.hidden = false;
-  }
-  function renderSlaCapability(selfService) {
-    if (!selfService?.sla?.enabled) return;
-    document.querySelectorAll(".request").forEach((row) => {
-      if (row.querySelector(".sla-pill")) return;
-      const pill = document.createElement("span");
-      pill.className = "sla-pill";
-      pill.textContent = "SLA";
-      row.appendChild(pill);
-    });
   }
   function enhance(result) {
     try {
@@ -6162,7 +6261,6 @@ Please see https://iframe-resizer.com/upgrade for more details.
       const modules = Array.isArray(result.integrations) ? result.integrations : [];
       renderModule(modules.find((module) => module.id === "assets"), "assets-section", "assets-module");
       renderModule(modules.find((module) => module.id === "smart-approval"), "approvals-section", "approvals-module");
-      renderSlaCapability(result.selfService);
       window.dispatchEvent(new CustomEvent("portalplus:enhancements-ready", { detail: { selfService: result.selfService, integrations: modules } }));
     } catch (_) {
     }

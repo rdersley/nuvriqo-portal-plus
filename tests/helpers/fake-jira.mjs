@@ -24,7 +24,7 @@ const json = (status, body) => ({
   text: async () => (body === undefined ? '' : JSON.stringify(body))
 });
 
-export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {}, statusHistory = {}, serviceDesks = { 35: '10000' } } = {}) {
+export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {}, statusHistory = {}, serviceDesks = { 35: '10000' }, fieldDefinitions = [] } = {}) {
   const calls = [];
   const orgName = (id) => organizations.find((org) => org.id === id)?.name;
 
@@ -36,7 +36,10 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       .sort((a, b) => b.created.localeCompare(a.created));
   }
 
-  function toIssue(issue) {
+  // Like Jira, search returns only the extra fields it was asked for.
+  function toIssue(issue, requested = []) {
+    const wanted = new Set(requested);
+    const extra = Object.fromEntries(Object.entries(issue.fields || {}).filter(([id]) => wanted.has(id)));
     return {
       key: issue.key,
       fields: {
@@ -46,7 +49,7 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
         updated: issue.created,
         resolutiondate: null,
         reporter: { accountId: issue.reporter, displayName: issue.reporterName || issue.reporter },
-        ...(issue.fields || {})
+        ...extra
       },
       properties: {}
     };
@@ -67,10 +70,11 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
       const start = body.nextPageToken ? Number(body.nextPageToken) : 0;
       const page = all.slice(start, start + body.maxResults);
       const next = start + page.length < all.length ? String(start + page.length) : undefined;
-      return json(200, { issues: page.map(toIssue), nextPageToken: next, isLast: !next });
+      return json(200, { issues: page.map((issue) => toIssue(issue, body.fields || [])), nextPageToken: next, isLast: !next });
     }
     if (url.pathname.startsWith('/rest/api/3/project/') && url.pathname.includes('/properties/')) return json(404, { errorMessages: ['not found'] });
 
+    if (method === 'GET' && url.pathname === '/rest/api/3/field') return json(200, fieldDefinitions);
     const serviceDeskPath = /^\/rest\/servicedeskapi\/servicedesk\/(\d+)$/.exec(url.pathname);
     if (serviceDeskPath && method === 'GET') {
       const projectId = serviceDesks[serviceDeskPath[1]];

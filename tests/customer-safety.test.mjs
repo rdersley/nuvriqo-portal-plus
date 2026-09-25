@@ -60,7 +60,7 @@ function experience(selfService = {}) {
   };
 }
 
-function seed({ issues, transitions = {}, selfService, editMeta = {}, statusHistory = {} } = {}) {
+function seed({ issues, transitions = {}, selfService, editMeta = {}, statusHistory = {}, fieldDefinitions = [] } = {}) {
   store.clear();
   store.set(`portalplus:config:${PROJECT}`, experience(selfService));
   jira = createFakeJira({
@@ -75,7 +75,8 @@ function seed({ issues, transitions = {}, selfService, editMeta = {}, statusHist
     ],
     transitions,
     editMeta,
-    statusHistory
+    statusHistory,
+    fieldDefinitions
   });
 }
 
@@ -254,6 +255,46 @@ test('reports cover every visible request across pages and nothing outside the b
   const dashboard = await call('getDashboard', 'alice');
   assert.equal(dashboard.selfService.report.total, 250);
   assert.deepEqual(dashboard.selfService.reportDataset, { count: 250, truncated: false, cap: 1000 });
+});
+
+test('SLA fields are discovered, requested and reported per request', async () => {
+  const sla = (state) => state === 'running'
+    ? { name: 'Time to resolution', ongoingCycle: { breached: false, remainingTime: { friendly: '3h' } } }
+    : { name: 'Time to resolution', completedCycles: [{ breached: state === 'breached' }] };
+  seed({
+    fieldDefinitions: [
+      { id: 'customfield_20001', name: 'Time to resolution', schema: { custom: 'com.atlassian.servicedesk:sd-sla-field' } },
+      { id: 'customfield_20002', name: 'Region', schema: { custom: 'com.atlassian.jira.plugin.system.customfieldtypes:select' } }
+    ],
+    issues: [
+      issue('SD-1', 'alice', { fields: { customfield_20001: sla('met') } }),
+      issue('SD-2', 'alice', { fields: { customfield_20001: sla('breached') } }),
+      issue('SD-3', 'alice', { fields: { customfield_20001: sla('running') } })
+    ],
+    selfService: { sla: { enabled: true }, reporting: { enabled: true } }
+  });
+  const dashboard = await call('getDashboard', 'alice');
+  const byKey = Object.fromEntries(dashboard.requests.values.map((r) => [r.issueKey, r.sla?.state]));
+  assert.deepEqual(byKey, { 'SD-1': 'met', 'SD-2': 'breached', 'SD-3': 'running' });
+  assert.deepEqual(dashboard.selfService.report.sla, { met: 1, breached: 1, measured: 2 });
+  assert.equal(dashboard.selfService.reportRows.length, 3);
+  assert.deepEqual(dashboard.selfService.reportRows.map((r) => r.sla?.state).sort(), ['breached', 'met', 'running']);
+});
+
+test('SLA fields are not requested when SLA and reporting are off', async () => {
+  seed({ fieldDefinitions: [{ id: 'customfield_20001', name: 'Time to resolution', schema: { custom: 'com.atlassian.servicedesk:sd-sla-field' } }] });
+  await call('getDashboard', 'alice');
+  assert.equal(jira.calls.some((c) => c.path === '/rest/api/3/field'), false);
+  const search = jira.calls.find((c) => c.path === '/rest/api/3/search/jql');
+  assert.equal(search.body.fields.includes('customfield_20001'), false);
+});
+
+test('standard fields such as Description reach the portal as columns', async () => {
+  const description = { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Docked screen flickers' }] }] };
+  seed({ issues: [issue('SD-1', 'alice', { fields: { description } })] });
+  store.get(`portalplus:config:${PROJECT}`).experiences[0].requestColumns = [{ id: 'description', name: 'Description' }];
+  const [request] = (await call('getDashboard', 'alice')).requests.values;
+  assert.deepEqual(request.requestFieldValues.find((f) => f.fieldId === 'description')?.value, description);
 });
 
 test('reports disclose truncation at the 1,000-request safety cap', async () => {
