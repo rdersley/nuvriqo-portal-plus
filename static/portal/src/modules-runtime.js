@@ -1,4 +1,4 @@
-import { invoke, router } from '@forge/bridge';
+import { router } from '@forge/bridge';
 import { renderCompanionModule, renderReportCards, renderReportCharts } from './module-renderers.js';
 
 const q = (id) => document.getElementById(id);
@@ -45,12 +45,10 @@ function renderSlaCapability(selfService) {
   });
 }
 
-async function start() {
+// Renders from the dashboard the main portal script already loaded (it emits
+// portalplus:dashboard after each load), rather than fetching it a second time.
+function enhance(result) {
   try {
-    const result = await Promise.race([
-      invoke('getDashboard'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Portal+ enhancement timeout')), 10000))
-    ]);
     if (!result?.audienceAllowed) return;
     renderReports(result.selfService);
     const modules = Array.isArray(result.integrations) ? result.integrations : [];
@@ -63,4 +61,4 @@ async function start() {
   }
 }
 
-window.addEventListener('load', () => setTimeout(start, 50));
+window.addEventListener('portalplus:dashboard', (event) => enhance(event.detail));

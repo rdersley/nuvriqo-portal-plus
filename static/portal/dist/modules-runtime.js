@@ -657,13 +657,13 @@
       exports.withRateLimiter = void 0;
       var errors_1 = require_errors();
       var withRateLimiter = (wrappedFn, maxOps, intervalInMs, exceededErrorMessage) => {
-        let start2 = Date.now();
+        let start = Date.now();
         let numOps = 0;
         return async (...args) => {
           const now = Date.now();
-          const elapsed = now - start2;
+          const elapsed = now - start;
           if (elapsed > intervalInMs) {
-            start2 = now;
+            start = now;
             numOps = 0;
           }
           if (numOps >= maxOps) {
@@ -682,7 +682,7 @@
     "node_modules/@forge/bridge/out/invoke/invoke.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.invoke = invoke2;
+      exports.invoke = invoke;
       exports.makeInvoke = makeInvoke;
       var bridge_1 = require_bridge();
       var errors_1 = require_errors();
@@ -703,11 +703,11 @@
         return await callBridge("invoke", { functionKey, payload, metadata });
       };
       var limitedInvoke = (0, utils_1.withRateLimiter)(_invoke, 500, 1e3 * 25, "Resolver calls are rate limited at 500req/25s");
-      function invoke2(functionKey, payload, metadata) {
+      function invoke(functionKey, payload, metadata) {
         return limitedInvoke(functionKey, payload, metadata);
       }
       function makeInvoke() {
-        return invoke2;
+        return invoke;
       }
     }
   });
@@ -2611,11 +2611,11 @@ Please see https://iframe-resizer.com/upgrade for more details.
             function stop() {
               setListener("Remove ", removeEventListener);
             }
-            function start2() {
+            function start() {
               setListener("Add ", addEventListener);
             }
             var id = iframeId;
-            start2();
+            start();
             if (settings[id]) {
               settings[id].stopPageInfo = stop;
             }
@@ -6154,12 +6154,8 @@ Please see https://iframe-resizer.com/upgrade for more details.
       row.appendChild(pill);
     });
   }
-  async function start() {
+  function enhance(result) {
     try {
-      const result = await Promise.race([
-        (0, import_bridge.invoke)("getDashboard"),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Portal+ enhancement timeout")), 1e4))
-      ]);
       if (!result?.audienceAllowed) return;
       renderReports(result.selfService);
       const modules = Array.isArray(result.integrations) ? result.integrations : [];
@@ -6170,5 +6166,5 @@ Please see https://iframe-resizer.com/upgrade for more details.
     } catch (_) {
     }
   }
-  window.addEventListener("load", () => setTimeout(start, 50));
+  window.addEventListener("portalplus:dashboard", (event) => enhance(event.detail));
 })();
