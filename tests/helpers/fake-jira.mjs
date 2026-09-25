@@ -6,16 +6,26 @@
 const QUOTED = '"((?:\\\\.|[^"\\\\])*)"';
 const unescape = (text) => text.replace(/\\(.)/g, '$1');
 const JQL = new RegExp(
-  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND key = ${QUOTED})? ORDER BY created DESC$`
+  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND cf\\[(\\d+)\\] in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?(?: AND key = ${QUOTED})? ORDER BY created DESC$`
 );
+
+const quotedList = (list) => (list ? [...list.matchAll(new RegExp(QUOTED, 'g'))].map((m) => unescape(m[1])) : []);
 
 export function parseCustomerJql(jql) {
   const match = JQL.exec(jql);
   if (!match) throw new Error(`Unexpected JQL shape: ${jql}`);
-  const [, projectId, reporter, orgList, key] = match;
-  const orgs = orgList ? [...orgList.matchAll(new RegExp(QUOTED, 'g'))].map((m) => unescape(m[1])) : [];
-  return { projectId, reporter: unescape(reporter), orgs, key: key ? unescape(key) : '' };
+  const [, projectId, reporter, orgList, scopeFieldId, scopeList, key] = match;
+  return {
+    projectId,
+    reporter: unescape(reporter),
+    orgs: quotedList(orgList),
+    scope: scopeFieldId ? { fieldId: `customfield_${scopeFieldId}`, values: quotedList(scopeList) } : null,
+    key: key ? unescape(key) : ''
+  };
 }
+
+// Dropdown values are { value } objects (single) or arrays of them (multi).
+const optionValues = (value) => (Array.isArray(value) ? value : value == null ? [] : [value]).map((option) => (option && typeof option === 'object' ? option.value : option));
 
 const json = (status, body) => ({
   ok: status >= 200 && status < 300,
@@ -32,6 +42,7 @@ export function createFakeJira({ issues = [], memberships = {}, organizations = 
     return issues
       .filter((issue) => issue.projectId === query.projectId)
       .filter((issue) => issue.reporter === query.reporter || issue.orgIds.some((id) => query.orgs.includes(orgName(id))))
+      .filter((issue) => !query.scope || optionValues(issue.fields?.[query.scope.fieldId]).some((value) => query.scope.values.includes(value)))
       .filter((issue) => !query.key || issue.key === query.key)
       .sort((a, b) => b.created.localeCompare(a.created));
   }

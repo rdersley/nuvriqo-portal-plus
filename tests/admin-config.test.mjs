@@ -44,7 +44,13 @@ beforeEach(() => {
         { fieldId: 'customfield_notes', name: 'Notes', visible: true, jiraSchema: schema('string', 'com.atlassian.jira.plugin.system.customfieldtypes:textarea') }
       ] },
       statuses: [{ id: '1', name: 'Open' }, { id: '6', name: 'Closed' }, { id: '7', name: 'Escalated' }]
-    }
+    },
+    fieldDefinitions: [
+      { id: 'customfield_300', name: 'Customer', custom: true, schema: { type: 'option' } },
+      { id: 'customfield_301', name: 'Regions', custom: true, schema: { type: 'array', items: 'option' } },
+      { id: 'customfield_302', name: 'Free text', custom: true, schema: { type: 'string' } },
+      { id: 'summary', name: 'Summary', custom: false, schema: { type: 'string' } }
+    ]
   });
 });
 
@@ -81,6 +87,34 @@ test('search panel wording survives publishing and reaches customers', async () 
   assert.equal(branding.brandName, 'Nuvriqo Support');
   assert.equal(branding.searchTitle, 'Find anything');
   assert.equal(branding.searchText, 'Search requests or pick a service.');
+});
+
+test('customer profiles keep help centers and a dropdown request scope', async () => {
+  const saved = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), helpCenters: ['Ryanair', '/helpcenter/Ryanair-Ops'], requestScope: { fieldId: 'customfield_300', values: 'Ryanair, Ryanair Ops' } }] });
+  const [e] = saved.experiences;
+  assert.deepEqual(e.helpCenters, ['ryanair', 'ryanair-ops']);
+  assert.deepEqual(e.requestScope, { fieldId: 'customfield_300', fieldName: 'Customer', values: ['Ryanair', 'Ryanair Ops'] });
+  assert.equal(store.get('portalplus:helpcenter:ryanair').projectId, PROJECT, 'publishing pre-warms the help center lookup');
+});
+
+test('request scope can only use a dropdown field that exists', async () => {
+  const saved = await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [
+    { ...experience({}), name: 'A', requestScope: { fieldId: 'customfield_302', values: ['x'] } },
+    { ...experience({}), name: 'B', audienceOrganizationIds: ['100'], requestScope: { fieldId: 'customfield_999', values: ['x'] } }
+  ] });
+  assert.deepEqual(saved.experiences.map((e) => e.requestScope), [null, null]);
+});
+
+test('a help center cannot belong to two experiences', async () => {
+  await assert.rejects(callAdmin('publishConfig', { serviceDeskId: '1', experiences: [
+    { ...experience({}), name: 'A', helpCenters: ['ryanair'] },
+    { ...experience({}), name: 'B', audienceOrganizationIds: ['100'], helpCenters: ['Ryanair'] }
+  ] }), /used by both A and B/);
+});
+
+test('discovery lists dropdown fields that can narrow requests', async () => {
+  const discovery = await callAdmin('getDiscovery');
+  assert.deepEqual(discovery.scopeFields, [{ id: 'customfield_300', name: 'Customer' }, { id: 'customfield_301', name: 'Regions' }]);
 });
 
 test('drafts keep self-service settings too', async () => {
