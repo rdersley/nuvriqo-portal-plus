@@ -75,6 +75,14 @@ test('after publishing, the Help Center page shows the published experience', as
   assert.equal(dashboard.experience.displayName, 'Support');
 });
 
+test('search panel wording survives publishing and reaches customers', async () => {
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), branding: { brandName: 'Nuvriqo Support', searchTitle: 'Find anything', searchText: 'Search requests or pick a service.' } }] });
+  const { branding } = (await callPortal('getDashboard', 'alice')).experience;
+  assert.equal(branding.brandName, 'Nuvriqo Support');
+  assert.equal(branding.searchTitle, 'Find anything');
+  assert.equal(branding.searchText, 'Search requests or pick a service.');
+});
+
 test('drafts keep self-service settings too', async () => {
   await callAdmin('saveDraft', { serviceDeskId: '1', experiences: [experience({ sla: { enabled: true } })] });
   const discovery = await callAdmin('getDiscovery');
