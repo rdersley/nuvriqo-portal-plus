@@ -6057,6 +6057,7 @@ Please see https://iframe-resizer.com/upgrade for more details.
   var esc = (value) => safe(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   var list = (value) => Array.isArray(value) ? value : [];
   function formatDuration(ms) {
+    if (ms == null || ms === "") return "\u2014";
     const value = Number(ms);
     if (!Number.isFinite(value) || value < 0) return "\u2014";
     const days = value / 864e5;

@@ -88,7 +88,10 @@ export function normalizeCustomerActions(actions = {}) {
 }
 
 const requestStatus = (request) => safeString(request?.status || request?.currentStatus?.status || 'Open');
-const requestType = (request) => safeString(request?.requestType || request?.requestType?.name || 'Unknown');
+const requestType = (request) => {
+  const value = request?.requestType;
+  return safeString((value && typeof value === 'object' ? value.name : value) || 'Unknown');
+};
 const parseDate = (value) => {
   const time = Date.parse(value || '');
   return Number.isFinite(time) ? time : null;

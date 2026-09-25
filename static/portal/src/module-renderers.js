@@ -3,6 +3,7 @@ const esc = (value) => safe(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;'
 const list = (value) => Array.isArray(value) ? value : [];
 
 export function formatDuration(ms) {
+  if (ms == null || ms === '') return '—';
   const value = Number(ms);
   if (!Number.isFinite(value) || value < 0) return '—';
   const days = value / 86400000;
