@@ -38,7 +38,7 @@ export function buildAssetModuleFromSnapshot(snapshot = {}, organisationIds = []
 
   const rows = [...assets.values()].slice(0, 50);
   const attention = rows.filter((row) => /repair|fault|damaged|lost|missing|retired/i.test(row.status)).length;
-  const inService = rows.filter((row) => /active|assigned|in service|deployed/i.test(row.status)).length;
+  const inService = rows.filter((row) => /active|assigned|in use|in service|deployed/i.test(row.status)).length;
   if (!rows.length) return null;
 
   return normalizePortalModule({
