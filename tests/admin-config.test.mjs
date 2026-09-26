@@ -117,6 +117,15 @@ test('discovery lists dropdown fields that can narrow requests', async () => {
   assert.deepEqual(discovery.scopeFields, [{ id: 'customfield_300', name: 'Customer' }, { id: 'customfield_301', name: 'Regions' }]);
 });
 
+test('document links are converted for customers on publish and reach the portal', async () => {
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), documents: [{ name: 'Getting started', items: [
+    { title: 'Printer setup', url: 'https://site.atlassian.net/wiki/spaces/KB/pages/12345/Printer+setup', description: 'Office printers' }
+  ] }] }] });
+  const [folder] = (await callPortal('getDashboard', 'alice')).experience.documents;
+  assert.equal(folder.name, 'Getting started');
+  assert.deepEqual(folder.items.map((i) => [i.title, i.url]), [['Printer setup', '/servicedesk/customer/portal/1/article/12345']]);
+});
+
 test('drafts keep self-service settings too', async () => {
   await callAdmin('saveDraft', { serviceDeskId: '1', experiences: [experience({ sla: { enabled: true } })] });
   const discovery = await callAdmin('getDiscovery');

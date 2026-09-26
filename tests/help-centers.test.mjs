@@ -91,6 +91,16 @@ test('the default help center routes by organisation and keeps the narrowing', a
   assert.deepEqual(keys(result), ['SD-1', 'SD-4']);
 });
 
+test('each client only receives its own guides', async () => {
+  const config = store.get(`portalplus:config:${PROJECT}`);
+  config.experiences[0].documents = [{ id: 'f1', name: 'Ryanair guides', items: [{ id: 'd1', title: 'Ryanair crew app', url: '/servicedesk/customer/portal/35/article/1' }] }];
+  config.experiences[1].documents = [{ id: 'f2', name: 'Jet2 guides', items: [{ id: 'd2', title: 'Jet2 tablet setup', url: '/servicedesk/customer/portal/35/article/2' }] }];
+  const titles = (result) => (result.experience?.documents || []).flatMap((f) => f.items.map((i) => i.title));
+  assert.deepEqual(titles(await call(onHelpCenter('Ryanair', 35), 'getDashboard', 'rya')), ['Ryanair crew app']);
+  assert.deepEqual(titles(await call(onHelpCenter('Jet2', 35), 'getDashboard', 'jet')), ['Jet2 tablet setup']);
+  assert.deepEqual(titles(await call(onHelpCenter('Ryanair', 35), 'getDashboard', 'jet')), [], 'Jet2 user on Ryanair help center gets no guides');
+});
+
 test('scope values are escaped in the search', async () => {
   const config = store.get(`portalplus:config:${PROJECT}`);
   config.experiences[0].requestScope.values = ['Ryanair") OR project = 1 OR cf[300] in ("x'];
