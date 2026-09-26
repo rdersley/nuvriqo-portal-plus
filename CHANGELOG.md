@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Look and feel
+
+- Adopted the shared Nuvriqo UI kit (`@nuvriqo/ui`): admin and portal colours now come from Atlassian design tokens, so both follow Jira light/dark mode.
+- Admin page uses the standard Nuvriqo header (N mark, product name, version pill) and footer, and Atlassian-style buttons.
+- Customer-facing white-label colours (top bar, customer accent) are unchanged.
+- `npm test` now fails on hardcoded colours (`check:ui`) and on an admin version pill that doesn't match `package.json`.
+
 ## 1.0.0-rc.1 — Marketplace release candidate
 
 Initial commercial release candidate for Jira Service Management Cloud.
