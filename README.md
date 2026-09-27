@@ -1,74 +1,57 @@
 # Nuvriqo Portal+ for Jira Service Management
 
-Turn Jira Service Management customer portals into clearer, customer-friendly service dashboards.
+A branded customer workspace inside the Jira Service Management portal: dashboard, requests, reports, guides and self-service, per customer, on top of JSM.
 
 ## Status
 
-**V1 Marketplace release-candidate preparation.**
+**1.0.0 — Marketplace release.** Forge app, Atlassian-hosted compute and storage, no external egress. JSM remains the system of record for customers, requests, workflows, SLAs and notifications.
 
-Portal+ is a Forge/Cloud-first Jira Service Management app. JSM remains the system of record for customer identity, permissions, requests, comments, request forms, workflows and notifications.
+## Capabilities
 
-The architecture and portal-only customer access have been validated live on Jira Service Management Cloud. The current branch is being hardened for a single final release-candidate acceptance test before production deployment and Atlassian Marketplace submission.
+**Customer workspace**
+- Branded dashboard in the JSM portal header: brand name, uploaded logo, accent colour, hero and search wording, optional white-label top bar.
+- Counters (open, awaiting customer, awaiting support) that open matching request views; Action Centre for requests waiting on the customer.
+- Service tiles and quick actions linked to the customer's request types; announcements and quick links.
+- My Requests: search, status, type and date filters, sorting, saved views, up to 8 configurable columns, real SLA status per request.
+- Request detail panel: configured read-only and editable fields (type-aware editors), JSM SLA, progress timeline, admin-enabled Close and Escalate.
+- Customer reports: created vs resolved, by type, by status, SLA met/breached, average resolution, 30-day trend, period selector.
+- CSV and Excel export of the customer's visible requests (up to 1,000).
+- Guides & documents library per customer, linking to knowledge base articles.
 
-## V1 capabilities
+**Multi-customer**
+- Experiences per JSM organisation, each with its own branding, services, guides and settings.
+- Help-center-aware routing: several JSM help centers on one shared project, each showing its customer's experience.
+- Optional narrowing of requests by a dropdown custom field (for example Customer = Acme).
 
-- Embedded customer dashboard inside the existing JSM portal.
-- Existing Atlassian/JSM customer login and permissions remain authoritative.
-- Open, Awaiting customer and Awaiting support dashboard counters.
-- Configurable workflow-status mapping.
-- Recent/enhanced request list with search, status filter, request-type filter and date filter.
-- Sorting and client-side pagination.
-- Up to three configurable customer-visible request fields/columns.
-- Configurable customer-friendly service categories and request-type quick actions.
-- Organization-based Portal+ audience rules.
-- CSV export of customer-visible requests, capped at 1,000 requests per export.
-- Automatic discovery of service desk, request types, organizations, statuses and customer-visible fields.
-- Forge KVS configuration storage with versioned migration.
-- Paid Marketplace licensing support.
-- No custom remote backend or third-party analytics/data egress in V1.
-- No hard-coded customer, project, organization, request type, field or status IDs.
+**Companion apps**
+- Approvals from Nuvriqo Smart Approval Manager and My Assets from Nuvriqo Asset Manager, when installed.
 
 ## Security model
 
-Customer request data is retrieved with Forge `asUser()` calls so Jira Service Management continues to enforce customer request visibility. Administrative discovery uses controlled app-context APIs for configuration metadata. Organization audience rules control whether the Portal+ experience is shown; they never grant Jira request access.
+Portal+ reads Jira with app permissions to avoid a per-customer consent prompt, and enforces the customer boundary itself on every server call: requests the customer reported or that are shared with their organisations, in the current project, optionally narrowed further. Help center addresses choose branding only; organisation membership decides access. Writes happen only for admin-enabled edits and transitions, with an internal audit comment. Full detail, stored data and scope justification: `docs/SECURITY-AND-PRIVACY.md`.
 
-Portal+ V1 stores configuration in Forge hosted storage and does not intentionally persist customer request descriptions, comments, attachments, passwords or personal API tokens in its configuration store.
-
-See `docs/SECURITY-AND-PRIVACY.md` for the Marketplace security/privacy source notes.
-
-## Release checks
+## Development
 
 ```bash
 npm install
-npm test
+npm test            # build, release checks, UI style check, behaviour tests
 npm audit --omit=dev --audit-level=high
 forge lint
+npm run test:live   # optional live checks, see live-tests/README.md
 ```
 
-`npm test` builds both Custom UI bundles and runs the repository release checks in `scripts/release-check.mjs`.
+Behaviour tests run the real resolvers against an in-memory Jira (`tests/helpers/fake-jira.mjs`) that applies JSM customer visibility and rejects unexpected queries.
 
-## Important manifest note
+## Licensing
 
-`manifest.template.yml` is the repository-safe manifest template and contains `REPLACE_WITH_FORGE_APP_ID`. A registered development/staging/production checkout must preserve its real Forge app ID in `manifest.yml`.
+`manifest.yml` must keep `app.licensing.enabled: true` for the paid Marketplace release. Outside production Portal+ is always active for testing. In production a Marketplace licence decides; vendor evaluation installs without a licence object are allowed only for cloud IDs listed in the `PORTALPLUS_EVALUATION_CLOUD_IDS` production variable (`src/licensing.js`).
 
-For the paid Marketplace release, the registered manifest must include:
-
-```yaml
-app:
-  licensing:
-    enabled: true
-```
+`manifest.template.yml` is the repository-safe template with `REPLACE_WITH_FORGE_APP_ID`.
 
 ## Documentation
 
-- `docs/V1-SPEC.md` — locked V1 product scope.
+- `docs/SECURITY-AND-PRIVACY.md` — security, stored data, scopes.
+- `docs/MARKETPLACE-LISTING.md` — listing copy.
+- `docs/MARKETPLACE-READINESS.md` — submission checklist.
 - `docs/ARCHITECTURE.md` — architecture decisions.
-- `docs/SPIKE-RESULTS.md` — live technical-spike evidence.
-- `docs/MARKETPLACE-READINESS.md` — release/submission gate.
-- `docs/MARKETPLACE-LISTING.md` — listing copy draft.
-- `docs/SECURITY-AND-PRIVACY.md` — security/privacy technical facts.
-- `docs/FINAL-ACCEPTANCE-TEST.md` — the single final RC acceptance test.
-
-## Release policy
-
-Do not add new V1 features after the release candidate enters final acceptance testing. Any defect fixes made during that test must be re-run through the release checks and the affected acceptance scenarios before production deployment.
+- `live-tests/README.md` — live multi-help-center checks.

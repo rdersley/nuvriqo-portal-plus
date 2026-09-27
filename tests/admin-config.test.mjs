@@ -126,6 +126,33 @@ test('document links are converted for customers on publish and reach the portal
   assert.deepEqual(folder.items.map((i) => [i.title, i.url]), [['Printer setup', '/servicedesk/customer/portal/1/article/12345']]);
 });
 
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+test('an uploaded logo is stored separately and reaches the admin page and customers', async () => {
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), id: 'exp-1', branding: { brandName: 'Acme', logoData: PNG } }] });
+  assert.equal(store.get(`portalplus:logo:${PROJECT}:exp-1`), PNG);
+  const saved = store.get(`portalplus:config:${PROJECT}`);
+  assert.equal(saved.experiences[0].branding.hasLogo, true);
+  assert.equal(JSON.stringify(saved).includes('base64'), false, 'the image is not stored inside the config');
+  assert.equal((await callAdmin('getDiscovery')).config.experiences[0].branding.logoData, PNG);
+  assert.equal((await callPortal('getDashboard', 'alice')).experience.branding.logoData, PNG);
+});
+
+test('removing the logo deletes it', async () => {
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), id: 'exp-1', branding: { logoData: PNG } }] });
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), id: 'exp-1', branding: { logoData: '' } }] });
+  assert.equal(store.has(`portalplus:logo:${PROJECT}:exp-1`), false);
+  assert.equal(store.get(`portalplus:config:${PROJECT}`).experiences[0].branding.hasLogo, false);
+  assert.equal((await callPortal('getDashboard', 'alice')).experience.branding.logoData, undefined);
+});
+
+test('logos must be allowed image types within 150 KB', async () => {
+  await assert.rejects(callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), id: 'exp-1', branding: { logoData: 'data:text/html;base64,PHNjcmlwdD4=' } }] }), /PNG, JPG, WebP or SVG/);
+  await assert.rejects(callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), id: 'exp-1', branding: { logoData: 'https://example.com/logo.png' } }] }), /PNG, JPG, WebP or SVG/);
+  const big = `data:image/png;base64,${'A'.repeat(210000)}`;
+  await assert.rejects(callAdmin('publishConfig', { serviceDeskId: '1', experiences: [{ ...experience({}), id: 'exp-1', branding: { logoData: big } }] }), /150 KB or smaller/);
+});
+
 test('drafts keep self-service settings too', async () => {
   await callAdmin('saveDraft', { serviceDeskId: '1', experiences: [experience({ sla: { enabled: true } })] });
   const discovery = await callAdmin('getDiscovery');

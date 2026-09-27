@@ -1,4 +1,4 @@
-# Nuvriqo Portal+ — Marketplace Listing Draft
+# Nuvriqo Portal+ — Marketplace Listing (1.0.0)
 
 ## App name
 
@@ -6,95 +6,52 @@
 
 ## Tagline
 
-**One JSM project. Multiple branded customer service experiences.**
+**A branded self-service workspace for every customer, on one JSM project.**
 
-## Short description
+## Short description (summary field)
 
-Portal+ turns Jira Service Management into a branded customer Service Hub with organization-specific experiences, Action Centre, service tiles, announcements, enhanced request management and a mobile-ready experience model — without replacing Jira workflows, permissions or request forms.
+Give each customer a branded portal with their requests, SLAs, reports, guides and self-service actions, while Jira Service Management stays the system of record. No extra projects, no external servers.
 
 ## Long description
 
-Nuvriqo Portal+ helps Jira Service Management teams deliver a more complete customer-service experience without creating duplicate JSM projects or moving service operations into another platform.
+Portal+ adds a customer workspace to the Jira Service Management portal. Customers see what needs their attention, find and export their requests, check SLAs and progress, update permitted details and read guides written for them. Service teams keep one JSM project, one workflow and one set of permissions.
 
-Use one JSM project to provide different customer experiences for different JSM organizations. Each Portal+ Experience can have its own customer-facing identity, dashboard content, service catalogue, workflow mappings, announcements, resources and request-list configuration while Jira Service Management remains the system of record.
+### One project, a portal per customer
 
-### Build branded customer experiences
+- Create an experience for each customer organisation with its own brand name, logo, colours, wording, services and guides.
+- Map experiences to JSM help centers, so `/helpcenter/acme` shows Acme's portal while every help center links to the same project.
+- Organisation membership decides access. The help center address changes the look, never what a customer can see.
+- Optionally narrow each customer's requests by a dropdown field such as Customer.
 
-Each Portal+ Experience can define:
+### Everything customers ask for, in one place
 
-- customer-facing experience and brand name;
-- brand accent colour and egress-free web brand mark;
-- dashboard heading and introduction;
-- hero message;
-- support identity/link;
-- organization audience;
-- dashboard modules;
-- Awaiting customer / Awaiting support workflow mappings;
-- customer-visible request columns;
-- service categories and request-type Quick Actions;
-- category-specific organization audiences;
-- announcements;
-- useful resources;
-- mobile / white-label display identity.
+- Dashboard counters, an Action Centre for requests waiting on the customer, service tiles and announcements.
+- My Requests with search, filters, saved views, up to 8 columns and live SLA status.
+- Request detail with SLA, a progress timeline, fields customers may update, and Close or Escalate when you allow it.
+- Customer reports: created vs resolved, by type and status, SLA performance and resolution time, by period.
+- CSV and Excel export of the customer's own requests.
+- A guides library per customer, linked to your knowledge base.
 
-Portal+ automatically chooses the appropriate Experience from the signed-in customer's JSM organization membership. Jira permissions still determine which requests that customer can access.
+### Built for trust
 
-### Customer Service Hub
+- Runs entirely on Atlassian Forge: no Nuvriqo servers, no external data transfer, logos stored in Forge.
+- Customers see only requests they reported or that are shared with their organisation, enforced on every call.
+- Field edits and workflow actions are opt-in, limited to fields and statuses you choose, and leave an internal note for agents.
 
-Eligible portal customers can receive a Service Hub containing:
+### Works with the Nuvriqo suite
 
-- Open, Awaiting you and Awaiting support counters;
-- **Things needing your attention** Action Centre;
-- service tiles and request-form Quick Actions;
-- audience-specific announcements;
-- documentation, status pages and useful links;
-- enhanced request search and navigation;
-- status, request-type and date filters;
-- sorting and pagination;
-- administrator-selected customer-visible fields;
-- click-through to the native JSM request;
-- CSV export of visible requests.
+Install Nuvriqo Smart Approval Manager or Asset Manager and approvals and assets appear inside Portal+. Portal+ works fully on its own.
 
-### One project, multiple experiences
+## Highlights (with screenshots)
 
-A service provider can continue operating one JSM project while presenting different Portal+ experiences to different JSM organizations. This reduces the pressure to clone projects, workflows and automation merely to create customer-specific portal navigation and presentation.
+1. **A branded portal for every customer** — screenshot: two help centers side by side with different branding.
+2. **Requests, SLAs and reports customers understand** — screenshot: dashboard with counters, reports and SLA badges.
+3. **Self-service without losing control** — screenshot: request detail panel with editable fields, timeline and Close.
 
-An organization-specific Experience can override a fallback Experience, and individual service categories can also be restricted to selected organizations.
+## Keywords
 
-### Mobile-ready by design
+Jira Service Management, JSM portal, customer portal, branded portal, white label, multiple help centers, customer self-service, portal reports, SLA reporting, request export, Excel export, knowledge base, organisation portal, service hub
 
-Portal+ stores branding, services, announcements, resources and customer-action configuration in a versioned Experience contract shared by the web client and future Portal+ mobile/white-label clients.
+## Out of scope for 1.0
 
-This creates a path from:
-
-**Portal+ Web → Portal+ Mobile → dedicated white-label service app**
-
-without building a second configuration system or hard-coding customer-specific Jira IDs into each client.
-
-### Fast administration
-
-Portal+ automatically discovers the current service desk's request types, JSM customer organizations, workflow statuses and customer-visible request fields. Administrators configure human-readable options instead of copying Jira numeric IDs.
-
-The Experience Builder includes a branded preview so administrators can review the customer-facing layout before publishing changes.
-
-### Designed for Jira, not around it
-
-Portal+ does not replace JSM authentication, permissions, workflows, request forms or request storage. Customer request reads use Jira/JSM customer context, so Jira remains authoritative for request visibility.
-
-### Privacy-first Forge architecture
-
-The Marketplace web app is built on Atlassian Forge with Atlassian-hosted compute and configuration storage. The current web architecture does not require a Nuvriqo remote backend or third-party analytics service. Portal+ deliberately uses an egress-free generated web brand mark rather than requiring arbitrary externally hosted logos inside the Forge iframe.
-
-## Suggested Marketplace highlights
-
-1. **One JSM project, multiple branded service hubs** — tailor navigation, branding and content to customer organizations without duplicating Jira projects.
-2. **Show customers what needs attention** — combine request counters with an Action Centre that links directly to requests awaiting the customer.
-3. **Web today, mobile-ready tomorrow** — configure branding and service experiences once using a shared Experience contract designed for Portal+ Mobile and white-label clients.
-
-## Suggested keywords
-
-Jira Service Management, JSM portal, customer portal, branded portal, white label, mobile service desk, customer experience, service hub, organization portal, multi portal, request dashboard, Action Centre, request export, CSV export, portal customization, request categories, request search
-
-## Current release boundaries
-
-The Marketplace web release does not include arbitrary customer field editing, a full drag-and-drop page designer, custom authentication/domains, external CRM integrations, AI functionality or multi-Jira-site aggregation. Native Portal+ Mobile and dedicated app-store white-label clients use the shared Experience architecture but remain separate delivery/security gates from the Forge Marketplace web app.
+Drag-and-drop page designer, custom domains, AI features, confidential document hosting, native mobile apps and multi-site aggregation.

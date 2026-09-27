@@ -1,6 +1,32 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — Marketplace release
+
+First Marketplace release for Jira Service Management Cloud.
+
+### Customer workspace
+
+- Request detail panel with type-aware editing (text, multi-line, number, date, date-time, dropdown), JSM SLA, progress timeline from customer status history, and admin-enabled Close and Escalate.
+- Real SLA status on My Requests rows and in customer reports; reports gain a working period selector (30/90 days, 6/12 months, all time).
+- Excel (.xlsx) export alongside CSV; both export the columns shown in My Requests.
+- Up to 8 My Requests columns, including standard fields such as Description.
+- Guides & documents library per experience, linking to knowledge base articles (Confluence page links converted automatically).
+- Uploaded brand logo, brand name in the top bar, configurable search panel wording, optional white-label top bar.
+- Larger, more readable type; phone-friendly form fields.
+
+### Multi-customer
+
+- Help-center-aware experiences for several JSM help centers on one shared project; organisation membership still decides access.
+- Optional request narrowing by a dropdown custom field.
+
+### Security and reliability
+
+- Customer visibility enforced on the server for every read and write; request detail and actions verify the exact request.
+- Close/Escalate run only transitions into admin-chosen statuses; field values validated per type; internal audit comment after customer changes.
+- Admin settings validated against live project fields, statuses and dropdown fields.
+- Portal+ resolves the project from the portal and help center, fixing the dashboard that never loaded in the portal header.
+- Dashboard data loaded once per page instead of twice.
+- Behaviour test suite running the real resolvers against an in-memory Jira.
 
 ### Look and feel
 

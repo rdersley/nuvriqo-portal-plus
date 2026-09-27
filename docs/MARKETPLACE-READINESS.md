@@ -1,87 +1,35 @@
-# Nuvriqo Portal+ — Marketplace Readiness
+# Nuvriqo Portal+ — Marketplace Readiness (1.0.0)
 
-Status: **V11/V12 release candidate — feature freeze approaching; final automated and human acceptance pending**
+Branch: `release/portal-plus-1.0`. Status: **code complete; live acceptance and vendor submission steps remain.**
 
-This is the submission gate for the first production Marketplace release. Portal+ Web is the Marketplace product; native iOS/Android delivery is a separately reviewed future client and is not required for the first web release.
+## Build (done)
 
-## Product complete
-- [x] Portal-only customer rendering on Jira Service Management Cloud.
-- [x] Customer requests retrieved with `api.asUser()` and Jira/JSM permission enforcement.
-- [x] Multiple branded Experiences from one JSM project.
-- [x] Deterministic organization-based audience routing with one fallback and ambiguity validation.
-- [x] Experience branding, hero/support identity and mobile identity metadata.
-- [x] Admin discovery of service desks, request types, organizations, statuses and customer-visible fields.
-- [x] Dashboard counts, Action Centre and recent requests.
-- [x] Configurable status mappings and up to three customer-visible request columns.
-- [x] Configurable/reorderable service categories and quick actions.
-- [x] Announcements and useful resources.
-- [x] Request search, status/type/date filters, sorting and pagination.
-- [x] CSV export limited to customer-visible requests, capped at 1,000 rows with formula-injection protection.
-- [x] Desktop/mobile admin preview and routing inspector.
-- [x] Mobile-first responsive customer presentation.
-- [x] Client Contract V3 and `getMobileBootstrap` mobile-ready Forge interface.
-- [x] Configuration migration/versioning and client/server validation.
-- [x] Production licence handling foundations.
+- [x] Version 1.0.0; changelog, README and security notes match the code.
+- [x] `manifest.yml`: licensing enabled, Node.js 22 runtime, five scopes justified in `SECURITY-AND-PRIVACY.md`, no external hosts.
+- [x] Customer visibility enforced server-side; behaviour tests for cross-customer isolation, injection, writes and help centers (71 tests).
+- [x] Logos uploaded to Forge storage (no external images permission, no egress).
+- [x] `npm test` green: build, release checks, UI style check, behaviour tests.
+- [x] Forge reports production builds eligible for Runs on Atlassian.
 
-## V12 / release freeze gate
-- [ ] Complete final draft/preview/publish lifecycle decision and implementation or explicitly defer it from 1.0.
-- [ ] Complete white-label configuration review; ensure no feature implies a native app is already shipped.
-- [ ] Complete scope-minimization audit for `manage:servicedesk-customer`; retain it if organization discovery cannot be implemented safely with a narrower supported scope.
-- [ ] Freeze product features for 1.0 after the above decisions.
+## Before deploying the release to production (vendor)
 
-## Automated quality
-- [x] Node.js 22 release workflow.
-- [x] Custom UI build and static release checks in CI.
-- [x] Production dependency audit blocks high/critical findings.
-- [x] Dependencies pinned to explicit RC versions.
-- [x] Previous Portal+ CI and Remote Forge QA green before V11 mobile changes.
-- [ ] Latest V11/V12 RC head passes Portal+ CI.
-- [ ] Latest V11/V12 RC head passes Remote Forge QA.
-- [ ] Registered-manifest `forge lint` passes after final Marketplace manifest preparation.
+- [ ] Uninstall production test installs made without a licence (Nuvriqo) if they should not carry over.
+- [ ] Deploy the release commit: `forge deploy --environment production` (licensing change is a major version; approve when prompted).
+- [ ] Keep or clear `PORTALPLUS_EVALUATION_CLOUD_IDS` (vendor evaluation sites only).
+- [ ] `npm audit --omit=dev --audit-level=high` clean.
 
-## Final acceptance
-- [ ] Clean/fresh configuration test.
-- [ ] Migration from earlier Portal+ configuration.
-- [ ] Multiple Experience and organization-routing test, including multi-organization customer.
-- [ ] Fallback and no-audience behaviour.
-- [ ] Branding, desktop preview and phone-width preview.
-- [ ] Action Centre, services, announcements and resources.
-- [ ] Create request and open existing request journeys.
-- [ ] Search/filter/sort/pagination and CSV export.
-- [ ] Permission isolation using customer accounts with different Jira-visible requests.
-- [ ] Active/inactive licence behaviour.
-- [ ] Phone-width customer experience on a real device.
-- [ ] Controlled real-world JSM pilot after Nuvriqo acceptance passes.
+## Live acceptance (vendor + live tests)
 
-## Forge / security
-- [x] Node.js 22 runtime.
-- [x] No remote backend or external data egress in the first web release architecture.
-- [x] Forge hosted storage only.
-- [x] Marketplace licensing enabled in repository manifest template.
-- [x] Customer unlicensed access declared where required by Forge module.
-- [x] No customer/project-specific production IDs required in source.
-- [x] Jira remains authoritative for request visibility; Portal+ routing controls presentation only.
-- [ ] Apply final licensing/scopes to registered local `manifest.yml` while preserving the real Forge app ID.
-- [ ] Run `npm install`, `npm test`, production dependency audit and `forge lint` against registered manifest.
-- [ ] Deploy exact final RC commit and complete acceptance.
-- [ ] Verify current Runs on Atlassian eligibility before making any badge claim.
+- [ ] Create `Ryanair` and `Jet2` (or equivalent) help centers on the test site linked to the test project.
+- [ ] Save two signed-in customer sessions and run `npm run test:live` (six checks, screenshots as evidence).
+- [ ] Manual pass on a phone: dashboard, request detail, export.
+- [ ] Automation rule setting the Customer field (see the Portal+ automation runbook).
 
-## Documentation / Marketplace material
-- [x] Marketplace listing draft.
-- [x] Marketplace readiness checklist.
-- [x] Security/privacy architecture.
-- [x] Privacy policy draft.
-- [x] Support policy draft.
-- [x] Terms/DPA checklist.
-- [x] Final acceptance plan.
-- [x] V11/V12 product track.
-- [x] Mobile Client Contract updated to V3.
-- [ ] Reconcile Marketplace listing copy with final V12 feature freeze.
-- [ ] Publish final customer-facing privacy, support, terms and documentation to permanent public HTTPS URLs.
-- [ ] Produce final logo, Marketplace screenshots/highlights and mobile-responsive product imagery.
-- [ ] Set pricing/billing model.
-- [ ] Complete Marketplace Privacy & Security answers and vendor security contact.
-- [ ] Complete outstanding Atlassian partner/vendor verification steps.
+## Marketplace submission (vendor, in the partner portal)
 
-## Submission gate
-Portal+ is **Marketplace-ready RC** only when the final feature scope is frozen, the latest automated gates are green, the registered Forge manifest passes lint/deployment preparation and the complete Nuvriqo acceptance test passes. A controlled real-world JSM pilot is the preferred final confidence check before submission.
+- [ ] App logo (144×144) and banner; three highlight screenshots (1840×900) from the live test site.
+- [ ] Listing copy from `MARKETPLACE-LISTING.md`.
+- [ ] Public HTTPS pages: documentation, privacy policy, support, EULA/terms.
+- [ ] Privacy & Security questionnaire from `SECURITY-AND-PRIVACY.md`; security contact.
+- [ ] Pricing (Atlassian-billed, per user) and trial.
+- [ ] Submit for Atlassian review.
