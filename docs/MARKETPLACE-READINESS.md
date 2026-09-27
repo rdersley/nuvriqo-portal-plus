@@ -6,7 +6,7 @@ This is the submission gate for the first production Marketplace release. Portal
 
 ## Product complete
 - [x] Portal-only customer rendering on Jira Service Management Cloud.
-- [x] Customer requests retrieved with `api.asUser()` and Jira/JSM permission enforcement.
+- [x] Customer requests read with `api.asApp()`, limited to the customer's own requests and their organizations' requests by the `customerJql()` boundary (`src/customer-visibility.js`). Detail, edits and actions re-check it per issue. See SECURITY-AND-PRIVACY.md, "Customer authorization".
 - [x] Multiple branded Experiences from one JSM project.
 - [x] Deterministic organization-based audience routing with one fallback and ambiguity validation.
 - [x] Experience branding, hero/support identity and mobile identity metadata.
@@ -21,12 +21,19 @@ This is the submission gate for the first production Marketplace release. Portal
 - [x] Mobile-first responsive customer presentation.
 - [x] Client Contract V3 and `getMobileBootstrap` mobile-ready Forge interface.
 - [x] Configuration migration/versioning and client/server validation.
-- [x] Production licence handling foundations.
+- [x] Production licence enforced on every data resolver (`requireLicence` in `src/licensing.js`). Unlicensed sites see a "Portal+ is unavailable" notice (portal) or a subscription message (admin). Evaluation cloud IDs (`PORTALPLUS_EVALUATION_CLOUD_IDS`) are unchanged.
 
 ## V12 / release freeze gate
 - [ ] Complete final draft/preview/publish lifecycle decision and implementation or explicitly defer it from 1.0.
 - [ ] Complete white-label configuration review; ensure no feature implies a native app is already shipped.
-- [ ] Complete scope-minimization audit for `manage:servicedesk-customer`; retain it if organization discovery cannot be implemented safely with a narrower supported scope.
+- [x] Scope audit (2026-09-27). All five scopes are used:
+  - `read:servicedesk-request`: service desk, request type, SLA and status-history reads.
+  - `read:jira-work`: search, transitions, edit metadata, statuses, fields, project properties.
+  - `write:jira-work`: field edits (`PUT /issue/{key}`), Close and Escalate (`POST …/transitions`) and audit notes (`POST …/comment`) in `src/request-detail-service.js`.
+  - `manage:servicedesk-customer`: `GET /servicedesk/{id}/organization` (admin) and `GET /organization?accountId=` (the customer's organizations); read only.
+  - `storage:app`: Forge KVS.
+
+  The only narrower option is the granular `read:organization:jira-service-management` in place of `manage:servicedesk-customer`. That scope change forces a major version, so decide it with the pre-Marketplace major bundle.
 - [ ] Freeze product features for 1.0 after the above decisions.
 
 ## Automated quality
@@ -57,10 +64,10 @@ This is the submission gate for the first production Marketplace release. Portal
 - [x] Node.js 22 runtime.
 - [x] No remote backend or external data egress in the first web release architecture.
 - [x] Forge hosted storage only.
-- [x] Marketplace licensing enabled in repository manifest template.
+- [x] Marketplace licensing enabled in `manifest.yml`. `npm run release:check` validates `manifest.yml` itself and fails if `manifest.template.yml` drifts from it.
 - [x] Customer unlicensed access declared where required by Forge module.
 - [x] No customer/project-specific production IDs required in source.
-- [x] Jira remains authoritative for request visibility; Portal+ routing controls presentation only.
+- [x] Portal+ enforces request visibility with the JQL boundary (reporter or customer organization). Routing and request scope can only narrow it. Covered by `tests/customer-safety.test.mjs` and `tests/help-centers.test.mjs`.
 - [ ] Apply final licensing/scopes to registered local `manifest.yml` while preserving the real Forge app ID.
 - [ ] Run `npm install`, `npm test`, production dependency audit and `forge lint` against registered manifest.
 - [ ] Deploy exact final RC commit and complete acceptance.

@@ -7,9 +7,11 @@ const service=fs.readFileSync(new URL('../src/request-detail-service.js',import.
 const manifest=fs.readFileSync(new URL('../manifest.yml',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../static/portal/dist/index.html',import.meta.url),'utf8');
 
-assert.match(app,/invoke\('getRequestDetail'/,'request rows should open Portal+ Request Detail');
-assert.match(app,/invoke\('updateRequestFields'/,'editable-after-submission fields should use the guarded resolver');
-assert.match(app,/invoke\('performRequestAction'/,'customer actions should use the guarded resolver');
+// call() is invoke() plus the unlicensed-site check.
+assert.match(app,/call\('getRequestDetail'/,'request rows should open Portal+ Request Detail');
+assert.match(app,/call\('updateRequestFields'/,'editable-after-submission fields should use the guarded resolver');
+assert.match(app,/call\('performRequestAction'/,'customer actions should use the guarded resolver');
+assert.match(app,/async function call\(fn,payload\)\{const r=await invoke\(fn,payload\);if\(r\?\.unlicensed\)/,'call() must surface the unlicensed payload');
 assert.match(app,/data-detail-field/,'Request Detail should render configured editable fields');
 assert.match(app,/Service levels/,'Request Detail should render SLA content');
 assert.match(html,/request-detail\.css/,'request detail styles should ship with the portal resource');

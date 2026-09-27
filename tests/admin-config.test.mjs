@@ -176,3 +176,26 @@ test('discovery tells the admin UI which fields customers may edit', async () =>
   const byId = Object.fromEntries(discovery.selfServiceFieldCatalogue.map((f) => [f.id, f.editableSupported]));
   assert.deepEqual(byId, { customfield_notes: true, customfield_owner: false, customfield_ref: true });
 });
+
+test('the Request Type field is looked up on publish, not on every page load', async () => {
+  jira = createFakeJira({
+    issues: [{ key: 'SD-1', projectId: PROJECT, reporter: 'alice', orgIds: [], created: '2026-09-01T10:00:00.000+0000', statusId: '1', statusName: 'Open', summary: 'Laptop', fields: { customfield_10200: { requestType: { name: 'Get IT help' } } } }],
+    fieldDefinitions: [{ id: 'customfield_10200', name: 'Request Type', custom: true, schema: { type: 'sd-customerrequesttype', custom: 'com.atlassian.servicedesk:vp-origin' } }]
+  });
+  await callAdmin('publishConfig', { serviceDeskId: '1', experiences: [experience({})] });
+  assert.equal(store.get(`portalplus:config:${PROJECT}`).requestTypeFieldId, 'customfield_10200');
+  const before = jira.calls.length;
+  const dashboard = await callPortal('getDashboard', 'alice');
+  const pageCalls = jira.calls.slice(before);
+  assert.equal(pageCalls.filter((c) => c.path === '/rest/api/3/field').length, 0, 'no field lookup on page load');
+  assert.ok(pageCalls.find((c) => c.path === '/rest/api/3/search/jql').body.fields.includes('customfield_10200'));
+  assert.equal(dashboard.requests.values[0].requestType.name, 'Get IT help');
+  assert.equal(dashboard.requests.values[0].requestFieldValues.some((f) => f.fieldId === 'customfield_10200'), false);
+});
+
+test('configs published before the lookup keep using the standard Request Type field', async () => {
+  store.set(`portalplus:config:${PROJECT}`, { version: 12, serviceDeskId: '1', experiences: [experience({})] });
+  store.set('portalplus:projects', { [PROJECT]: new Date().toISOString() });
+  await callPortal('getDashboard', 'alice');
+  assert.ok(jira.calls.find((c) => c.path === '/rest/api/3/search/jql').body.fields.includes('customfield_10010'));
+});

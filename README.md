@@ -49,7 +49,7 @@ forge lint
 
 ## Important manifest note
 
-`manifest.template.yml` is the repository-safe manifest template and contains `REPLACE_WITH_FORGE_APP_ID`. A registered development/staging/production checkout must preserve its real Forge app ID in `manifest.yml`.
+`manifest.yml` is the registered manifest that Forge deploys, and `scripts/release-check.mjs` validates it. `manifest.template.yml` is the same file with `REPLACE_WITH_FORGE_APP_ID` for new registrations; the release check fails if the two differ in anything but the app ID, so change both together.
 
 For the paid Marketplace release, the registered manifest must include:
 
