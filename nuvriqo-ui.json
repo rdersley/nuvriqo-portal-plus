@@ -1,0 +1,18 @@
+{
+  "allowColors": [
+    "#0b3d6b",
+    "#0f4f88",
+    "#58b6ff",
+    "#1175d5",
+    "#55b4ff",
+    "rgba(255,255,255,.8)",
+    "rgba(255,255,255,.06)",
+    "rgba(0,0,0,.14)"
+  ],
+  "keepSelectors": [
+    ".topbar",
+    ".nav-item",
+    ".icon-button",
+    ".user-chip"
+  ]
+}
