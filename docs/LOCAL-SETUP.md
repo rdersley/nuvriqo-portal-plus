@@ -1,6 +1,6 @@
 # Local setup — technical prototype
 
-The repository deliberately contains `manifest.template.yml` rather than a registered `manifest.yml` because the Forge app registration must be created under the developer's Atlassian account.
+The repository tracks the registered `manifest.yml` (the Nuvriqo Portal+ app ID) and `manifest.template.yml`, an identical copy with `REPLACE_WITH_FORGE_APP_ID` for registering a separate app under another Atlassian account. `npm run release:check` validates `manifest.yml` and fails if the template drifts from it in anything other than the app ID. The steps below apply only to that separate registration.
 
 ## First registration
 
