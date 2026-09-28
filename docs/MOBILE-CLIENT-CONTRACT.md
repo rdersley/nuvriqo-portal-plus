@@ -22,7 +22,7 @@ The Forge portal resolver exposes `getClientContract` plus a dedicated `getMobil
 - notification capability/topics contract;
 - explicit capability flags and licence state.
 
-All customer request information continues to be obtained through Jira/JSM customer context with `api.asUser()`. Portal+ audience configuration selects presentation/branding; it does not grant Jira request access.
+Customer request information is obtained with app permissions (`api.asApp()`), restricted by Portal+ on every call to requests the customer reported or that are shared with their organisations (see `SECURITY-AND-PRIVACY.md`). Audience configuration selects presentation and branding; it never widens request access.
 
 ## Mobile bootstrap boundary
 `getMobileBootstrap` is a Forge-side contract and is **not** represented as a public unauthenticated internet API. A native iOS/Android client still requires a separately reviewed authentication and transport mechanism before Jira-backed data can be consumed outside the Forge surface.

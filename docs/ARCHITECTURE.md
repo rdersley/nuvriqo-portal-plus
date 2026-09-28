@@ -4,6 +4,8 @@
 
 Portal+ V1 uses a Forge/Cloud-first hybrid embedded architecture. Jira Service Management remains the service-management engine and source of truth; Portal+ provides the enhanced customer and administration experience through supported Forge/JSM extension points.
 
+**Current (1.0.0):** customer reads use app permissions with the customer boundary enforced by Portal+ on every call, because Forge `asUser()` forces a consent screen on portal customers. See `SECURITY-AND-PRIVACY.md`.
+
 ## Logical architecture
 
 ```text
@@ -16,7 +18,8 @@ Portal+ V1 uses a Forge/Cloud-first hybrid embedded architecture. Jira Service M
     Forge UI / JSM              Forge Custom UI
     portal modules                    |
           |                           |
-       asUser()                     asApp()
+  asApp() + server-side             asApp()
+  customer boundary
           |                           |
           +-------------+-------------+
                         |

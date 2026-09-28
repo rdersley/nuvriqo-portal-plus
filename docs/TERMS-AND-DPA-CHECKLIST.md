@@ -18,9 +18,9 @@ Atlassian requires customer terms for paid cloud transactions and may require a 
 - No external analytics or third-party data egress designed into V1.
 - Portal+ configuration stored in Atlassian Forge KVS.
 - Customer requests read from Jira/JSM using Forge APIs.
-- Customer request access uses customer context (`asUser`) where Portal+ acts on behalf of the portal customer.
+- Customer requests are read with app permissions (`asApp`); Portal+ enforces the customer boundary (reported by or shared with the customer's organisations) on every call. See `SECURITY-AND-PRIVACY.md`.
 - No passwords or Atlassian personal API tokens requested or stored.
-- Configuration may contain Jira entity identifiers such as project/service-desk/request-type/status/organization IDs and administrator-authored category text.
+- Configuration may contain Jira entity identifiers (project, request type, status, organisation, field IDs), administrator-authored text, help center URL endings, field values and uploaded logos. No personal data is stored.
 
 ## Publication gate
 
