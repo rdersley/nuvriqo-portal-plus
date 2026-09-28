@@ -5,12 +5,12 @@ and confirm Portal+ keeps them apart on a shared JSM project.
 
 ## 1. Save a session for each test customer (once, and again when it expires)
 
-Run this, sign in as the customer in the browser that opens, then close it.
+Run this, sign in as the customer in the browser that opens, wait until your avatar shows (you are signed in), then close the browser window.
 Keep the files outside the repo: they act as signed-in logins.
 
 ```
-npx playwright codegen --save-storage=C:\jiraapps\portal-plus-notes\customer-a.json https://nuvriqo.atlassian.net/servicedesk/customer/portals
-npx playwright codegen --save-storage=C:\jiraapps\portal-plus-notes\customer-b.json https://nuvriqo.atlassian.net/servicedesk/customer/portals
+npx playwright codegen --save-storage=C:\jiraapps\portal-plus-notes\customer-a.json "https://nuvriqo.atlassian.net/servicedesk/customer/user/login?destination=portals"
+npx playwright codegen --save-storage=C:\jiraapps\portal-plus-notes\customer-b.json "https://nuvriqo.atlassian.net/servicedesk/customer/user/login?destination=portals"
 ```
 
 ## 2. Set the environment and run
@@ -30,6 +30,10 @@ npm run test:live
 
 Screenshots of every page and the exported CSV are saved under `live-test-results/`;
 the HTML report is in `live-test-report/`.
+
+### Sites without several help centers
+
+Multiple help centers need JSM Premium. Without them, leave both `*_HELPCENTER` variables empty and set `PORTALPLUS_LIVE_PORTAL_ID`: both customers use the default portal, separation is checked through organisations, and tests 4 and 5 are skipped. The two brand names must differ.
 
 ## What is checked
 
