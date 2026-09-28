@@ -11,7 +11,7 @@ Portal+ adds a branded customer workspace to the Jira Service Management (JSM) c
 1. Install Portal+ from the Atlassian Marketplace and approve its permissions.
 2. Open your service project and go to **Project settings → Apps → Nuvriqo Portal+**.
 3. Portal+ discovers the project's request types, organisations, statuses and customer-visible fields automatically.
-4. Set up **Experience 1** (section 2), then click **Save & publish**.
+4. Set up **Experience 1** (see *Experiences* in the Administrator Guide), then click **Save & publish**.
 5. Open your customer portal. Portal+ appears at the top of the portal and help center pages.
 
 Portal+ stays hidden until at least one experience is published, so customers never see an empty dashboard.
@@ -26,7 +26,7 @@ An **experience** is one customer-facing version of Portal+: its branding, conte
 
 - **Experience audience:** the JSM organisations the experience is for. A customer gets the experience whose audience best matches their organisations.
 - **Fallback:** one experience may have no audience. Customers who match no other experience get it. Without a fallback, unmatched customers don't see Portal+.
-- **Help centers** (see section 3) let an experience appear on a specific JSM help center.
+- **Help centers** let an experience appear on a specific JSM help center (see *Several customers on one project*).
 
 ### Experience settings
 
@@ -39,7 +39,7 @@ An **experience** is one customer-facing version of Portal+: its branding, conte
 | Service tiles & Quick Actions | Categories of request types customers can raise; each category can be limited to certain organisations |
 | Announcements | Short banners (information, warning, success) |
 | Useful links | Links to other resources (must use https://) |
-| Documents | Guides for this customer (section 6) |
+| Documents | Guides for this customer (see *Documents*) |
 
 ---
 
