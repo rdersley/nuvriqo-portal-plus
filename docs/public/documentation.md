@@ -56,7 +56,7 @@ If you serve several customers from one service project, you can give each one t
 
 **Limit requests to** only ever *narrows* what a customer sees. Customers see requests they reported or that are shared with their organisation, and within those, only requests whose field matches. Portal+ never shows a request JSM itself would hide from that customer.
 
-To tag new requests automatically, add a Jira Automation rule that sets the field from the reporter's organisation. Ask Nuvriqo support for the rule template.
+To tag new requests automatically, add a Jira Automation rule that sets the field from the request's organisation. See *Automation: set Customer from organisation* for step-by-step rules.
 
 ---
 
