@@ -10,7 +10,7 @@
     "test:live": "playwright test -c playwright.live.config.cjs",
     "release:check": "node scripts/release-check.mjs",
     "test:integrations": "node tests/integration-contract.test.mjs && node tests/integration-registry.test.mjs && node tests/integration-adapters.test.mjs && node tests/asset-manager-adapter.test.mjs && node tests/self-service-contract.test.mjs && node tests/self-service-runtime.test.mjs && node tests/self-service-admin.test.mjs && node tests/request-detail-security.test.mjs && node tests/request-detail-ui.test.mjs && node tests/ui-shell-structure.test.mjs && node tests/module-renderers.test.mjs && node tests/pre-marketplace-e2e.test.mjs && npm run test:behaviour",
-    "test:behaviour": "node --experimental-test-module-mocks --no-warnings --test tests/customer-safety.test.mjs tests/admin-config.test.mjs tests/xlsx-writer.test.mjs tests/licensing.test.mjs tests/report-display.test.mjs tests/sla.test.mjs tests/help-centers.test.mjs tests/documents.test.mjs",
+    "test:behaviour": "node --experimental-test-module-mocks --no-warnings --test tests/customer-safety.test.mjs tests/admin-config.test.mjs tests/xlsx-writer.test.mjs tests/licensing.test.mjs tests/report-display.test.mjs tests/sla.test.mjs tests/help-centers.test.mjs tests/documents.test.mjs tests/portal-groups.test.mjs",
     "test": "npm run build && npm run check:ui && npm run release:check && npm run test:integrations",
     "deploy": "npm run test && forge deploy",
     "install:dev": "forge install -e development",
