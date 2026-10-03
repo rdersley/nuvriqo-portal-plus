@@ -3,7 +3,7 @@
   const qa = (s) => [...document.querySelectorAll(s)];
   q('.portal-page')?.classList.add('wrap');
 
-  const navItems = () => qa('.nav-item[data-scroll]');
+  const navItems = () => qa('.topnav > .nav-item[data-scroll]');
   const sectionFor = (btn) => document.getElementById(btn.dataset.scroll);
   const isShown = (el) => Boolean(el) && !el.hidden && el.offsetParent !== null;
 
@@ -21,7 +21,51 @@
     navItems().forEach((btn) => { btn.hidden = !isShown(sectionFor(btn)) && btn.dataset.scroll !== 'home'; });
     const active = navItems().find((btn) => btn.classList.contains('active'));
     if (!active || active.hidden) setActive('home');
+    fitTabs();
   }
+
+  // Tabs that don't fit the menu bar move into a "More" menu, instead of the bar
+  // scrolling sideways (the portal column is often narrow).
+  const nav = q('.topnav');
+  const more = document.createElement('div');
+  more.className = 'nav-more';
+  more.hidden = true;
+  more.innerHTML = '<button type="button" class="nav-item nav-more-btn" aria-haspopup="true" aria-expanded="false">More &#9662;</button><div class="nav-more-menu" role="menu" hidden></div>';
+  nav?.appendChild(more);
+  const moreBtn = more.querySelector('.nav-more-btn');
+  const moreMenu = more.querySelector('.nav-more-menu');
+  const closeMore = () => { moreMenu.hidden = true; moreBtn.setAttribute('aria-expanded', 'false'); };
+  moreBtn.addEventListener('click', (event) => { event.stopPropagation(); moreMenu.hidden = !moreMenu.hidden; moreBtn.setAttribute('aria-expanded', String(!moreMenu.hidden)); window.dispatchEvent(new Event('resize')); });
+  document.addEventListener('click', (event) => { if (!more.contains(event.target)) closeMore(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMore(); });
+
+  function fitTabs() {
+    if (!nav) return;
+    const items = navItems().filter((btn) => !btn.hidden);
+    items.forEach((btn) => btn.classList.remove('nav-overflow'));
+    more.hidden = true;
+    moreMenu.innerHTML = '';
+    if (nav.scrollWidth <= nav.clientWidth + 1) return;
+    more.hidden = false;
+    const overflow = [];
+    // Keep Home and the active tab; move the rest from the end until it fits.
+    for (const btn of [...items].reverse()) {
+      if (nav.scrollWidth <= nav.clientWidth + 1) break;
+      if (btn.dataset.scroll === 'home' || btn.classList.contains('active')) continue;
+      btn.classList.add('nav-overflow');
+      overflow.unshift(btn);
+    }
+    if (!overflow.length) { more.hidden = true; return; }
+    overflow.forEach((btn) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'menuitem');
+      item.textContent = btn.textContent;
+      item.addEventListener('click', () => { closeMore(); scrollToId(btn.dataset.scroll); fitTabs(); });
+      moreMenu.appendChild(item);
+    });
+  }
+  if (nav && 'ResizeObserver' in window) new ResizeObserver(() => fitTabs()).observe(nav);
 
   function scrollToId(id) {
     const el = document.getElementById(id);

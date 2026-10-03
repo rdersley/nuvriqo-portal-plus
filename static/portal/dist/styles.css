@@ -21,3 +21,39 @@
 .service-more:hover{text-decoration:underline}
 .service-empty{color:var(--nq-text-subtle);font-size:13px;margin:4px 0}
 @media (max-width:640px){.category-grid.service-grid{grid-template-columns:1fr}#quick-actions-section .section-head{flex-wrap:wrap}.service-search{width:100%;flex:1 1 100%}.service-search input{min-width:0;width:100%}}
+
+/* Compact header: brand, title, export and one search bar (no repeated headings) */
+.brand-hero{padding:16px 18px 10px}
+.brand-hero h2{font-size:22px}
+.brand-hero p{font-size:13px;margin:2px 0 0}
+.brand-hero p:empty{display:none}
+.brand-mark{width:40px;height:40px;flex-basis:40px;border-radius:12px;font-size:14px}
+.hero-search{padding:4px 18px 16px}
+.hero-search>div{display:none}
+.hero-search label{flex:1;min-width:0;width:100%}
+.hero-search input{padding:10px 12px}
+
+/* Totals are neutral; colour is kept for things that need action */
+.metric-icon.neutral{background:var(--nq-bg-neutral);color:var(--nq-text-subtle)}
+
+/* First visit: no counters or filters for an empty list, one friendly start */
+.first-visit .cards,.first-visit #request-tools,.first-visit #saved-views,.first-visit #result-count{display:none}
+.first-request{align-items:flex-start;text-align:left}
+.first-request-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.first-request-actions .quick-link{width:auto;gap:10px}
+
+/* Menu bar: tabs that don't fit go into "More" */
+.topnav{position:relative;overflow:visible;min-width:0}
+.topnav>.nav-item,.nav-more-btn{flex:0 0 auto;white-space:nowrap}
+.nav-item.nav-overflow{display:none}
+.nav-more{position:relative;display:flex;align-self:stretch}
+.nav-more[hidden]{display:none}
+.nav-more-menu{position:absolute;top:100%;right:0;min-width:180px;background:var(--nq-surface-overlay);border:1px solid var(--nq-border);border-radius:8px;box-shadow:var(--nq-shadow-overlay);padding:4px;z-index:20;display:flex;flex-direction:column}
+.nav-more-menu[hidden]{display:none}
+.nav-more-menu button{border:0;background:none;color:var(--nq-text);text-align:left;padding:8px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.nav-more-menu button:hover,.nav-more-menu button:focus-visible{background:var(--nq-surface-hovered)}
+@media(max-width:980px){.topnav{overflow:visible}}
+@media(max-width:640px){.topnav{overflow:visible}.nav-more{height:34px}}
+
+/* Narrow portal columns (the JSM portal content area is often ~650px) */
+@media(max-width:760px){.request-tools{grid-template-columns:1fr 1fr}.request-tools .search-field{grid-column:1/-1}.top-actions{flex-wrap:wrap;justify-content:flex-end}}

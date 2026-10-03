@@ -40,6 +40,10 @@ An **experience** is one customer-facing version of Portal+: its branding, conte
 | Announcements | Short banners (information, warning, success) |
 | Useful links | Links to other resources (must use https://) |
 | Documents | Guides for this customer (see *Documents*) |
+| Page layout | **Track requests first** (counters, Action Centre, then My Requests) or **Raise requests first** (Services at the top, for portals where Portal+ is the main page) |
+| Tabs from other Nuvriqo apps | Adds tabs for Nuvriqo apps that announce themselves on the project |
+| Always show Approvals / My Assets tab | Shows the Smart Approval or Asset Manager tab even before there is any data |
+| Extra menu tabs | Up to 4 tabs you add yourself, each showing a card with your text and an optional button (https:// or a link on your site) |
 
 ---
 

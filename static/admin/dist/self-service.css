@@ -8,3 +8,7 @@
 /* Extra menu tabs: label, description, button label, button link */
 .menu-tab{grid-template-columns:1fr 2fr 1fr 1.5fr auto}
 @media (max-width:760px){.menu-tab{grid-template-columns:1fr}}
+
+/* Page layout picker in the dashboard options row */
+.layout-pick{display:flex;align-items:center;gap:8px}
+.layout-pick select{border:1px solid var(--nq-border-input);border-radius:5px;padding:4px 6px;background:var(--nq-surface-raised);color:var(--nq-text)}

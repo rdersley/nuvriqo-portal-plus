@@ -6273,7 +6273,7 @@ Please see https://iframe-resizer.com/upgrade for more details.
     if (!host || !nav) return;
     host.innerHTML = "";
     nav.querySelectorAll("[data-companion]").forEach((button) => button.remove());
-    const reports = nav.querySelector('[data-scroll="reports-section"]');
+    const reports = nav.querySelector(':scope > [data-scroll="reports-section"]') || nav.querySelector(":scope > .nav-more");
     for (const entry of Array.isArray(menu) ? menu : []) {
       const builtIn = BUILT_IN[entry.section];
       const actions = (entry.links || []).map((link, i) => ({ id: `link-${i}`, label: link.label, url: link.url }));
