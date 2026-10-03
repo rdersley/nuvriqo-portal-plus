@@ -6205,6 +6205,17 @@ Please see https://iframe-resizer.com/upgrade for more details.
   var BUILT_IN = { "smart-approval": { section: "approvals-section", host: "approvals-module" }, assets: { section: "assets-section", host: "assets-module" } };
   async function navigate(url) {
     if (!url) return;
+    if (/^https:\/\//i.test(url)) {
+      try {
+        await import_bridge.router.open(url);
+      } catch (_) {
+        try {
+          window.open(url, "_blank", "noopener");
+        } catch (_2) {
+        }
+      }
+      return;
+    }
     try {
       await import_bridge.router.navigate(url);
     } catch (_) {

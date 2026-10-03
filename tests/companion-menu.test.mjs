@@ -42,3 +42,20 @@ test('entries are de-duplicated, ordered and capped', () => {
   assert.equal(entries[0].label, 'App 9');
   assert.equal(new Set(entries.map((e) => e.id)).size, entries.length);
 });
+
+import { customMenuEntries, normalizeCustomTabs, safeTabUrl } from '../src/companion-menu.js';
+
+test('admin tabs allow https and same-site links, nothing else', () => {
+  assert.equal(safeTabUrl('https://example.com/reports'), 'https://example.com/reports');
+  assert.equal(safeTabUrl('/servicedesk/customer/portal/2'), '/servicedesk/customer/portal/2');
+  for (const bad of ['http://example.com', 'javascript:alert(1)', '//evil.example', 'https://', 'https://a b']) assert.equal(safeTabUrl(bad), '', bad);
+});
+
+test('admin tabs become cards after the announced tabs, capped at four', () => {
+  const tabs = Array.from({ length: 6 }, (_, i) => ({ label: `Tab ${i}`, description: 'd', links: [{ label: 'Open', url: 'https://example.com' }] }));
+  tabs.push({ label: '', description: 'no label is dropped' });
+  const entries = customMenuEntries(tabs);
+  assert.equal(entries.length, 4);
+  assert.deepEqual(entries[0], { id: 'custom-1', provider: 'portal-plus-admin', section: 'card', order: 200, label: 'Tab 0', description: 'd', links: [{ label: 'Open', url: 'https://example.com' }] });
+  assert.equal(normalizeCustomTabs([{ label: 'X', links: [{ label: 'Bad', url: 'ftp://x' }] }])[0].links.length, 0);
+});

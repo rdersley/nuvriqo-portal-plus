@@ -68,3 +68,32 @@ export function normalizeMenuEntries(properties = []) {
     .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
     .slice(0, MAX_MENU_ENTRIES);
 }
+
+// Tabs an admin adds by hand in Portal+ settings (per experience), for apps that
+// can't announce themselves. Admin-entered, so https links are allowed as well as
+// same-site paths. Shown as cards after the announced tabs.
+export const MAX_CUSTOM_TABS = 4;
+
+export function safeTabUrl(url) {
+  const value = String(url ?? '').trim();
+  if (/^https:\/\/[^\s/\\]+(\/\S*)?$/i.test(value)) return value.slice(0, 500);
+  return safeSitePath(value);
+}
+
+export function normalizeCustomTabs(tabs = []) {
+  return (Array.isArray(tabs) ? tabs : [])
+    .map((tab) => ({
+      label: text(tab?.label, 24),
+      description: text(tab?.description, 200),
+      links: (Array.isArray(tab?.links) ? tab.links : [])
+        .map((link) => ({ label: text(link?.label, 40), url: safeTabUrl(link?.url) }))
+        .filter((link) => link.label && link.url)
+        .slice(0, 3),
+    }))
+    .filter((tab) => tab.label)
+    .slice(0, MAX_CUSTOM_TABS);
+}
+
+export function customMenuEntries(tabs = []) {
+  return normalizeCustomTabs(tabs).map((tab, i) => ({ id: `custom-${i + 1}`, provider: 'portal-plus-admin', section: 'card', order: 200 + i, ...tab }));
+}

@@ -8,6 +8,8 @@ const BUILT_IN = { 'smart-approval': { section: 'approvals-section', host: 'appr
 
 async function navigate(url) {
   if (!url) return;
+  // Links to other sites (admin-added tabs) open in a new tab; same-site paths stay in the portal.
+  if (/^https:\/\//i.test(url)) { try { await router.open(url); } catch (_) { try { window.open(url, '_blank', 'noopener'); } catch (_) {} } return; }
   try { await router.navigate(url); } catch (_) { try { window.open(url, '_top'); } catch (_) {} }
 }
 

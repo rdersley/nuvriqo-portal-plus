@@ -4,3 +4,7 @@
 
 /* Services header: Import from portal groups + Add category */
 .panel-title-row .title-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* Extra menu tabs: label, description, button label, button link */
+.menu-tab{grid-template-columns:1fr 2fr 1fr 1.5fr auto}
+@media (max-width:760px){.menu-tab{grid-template-columns:1fr}}
