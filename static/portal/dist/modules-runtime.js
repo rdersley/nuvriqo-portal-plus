@@ -6201,6 +6201,8 @@ Please see https://iframe-resizer.com/upgrade for more details.
 
   // static/portal/src/modules-runtime.js
   var q = (id) => document.getElementById(id);
+  var esc2 = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var BUILT_IN = { "smart-approval": { section: "approvals-section", host: "approvals-module" }, assets: { section: "assets-section", host: "assets-module" } };
   async function navigate(url) {
     if (!url) return;
     try {
@@ -6254,6 +6256,43 @@ Please see https://iframe-resizer.com/upgrade for more details.
     draw();
     section.hidden = false;
   }
+  function renderCompanionMenu(menu, modules) {
+    const host = q("companion-sections");
+    const nav = document.querySelector(".topnav");
+    if (!host || !nav) return;
+    host.innerHTML = "";
+    nav.querySelectorAll("[data-companion]").forEach((button) => button.remove());
+    const reports = nav.querySelector('[data-scroll="reports-section"]');
+    for (const entry of Array.isArray(menu) ? menu : []) {
+      const builtIn = BUILT_IN[entry.section];
+      const actions = (entry.links || []).map((link, i) => ({ id: `link-${i}`, label: link.label, url: link.url }));
+      if (builtIn) {
+        if (!modules.some((module) => module.id === entry.section)) {
+          renderModule({ id: entry.section, title: entry.label, description: entry.description, counters: [], items: [], actions }, builtIn.section, builtIn.host);
+        }
+        const tab2 = nav.querySelector(`[data-scroll="${builtIn.section}"]`);
+        if (tab2) tab2.textContent = entry.label;
+        continue;
+      }
+      const id = `companion-${entry.id}`;
+      const section = document.createElement("section");
+      section.id = id;
+      section.className = "section companion-section";
+      section.innerHTML = `<div class="section-head"><div><span class="eyebrow">Connected app</span><h3>${esc2(entry.label)}</h3>${entry.description ? `<p>${esc2(entry.description)}</p>` : ""}</div></div>${actions.length ? `<div class="companion-actions">${actions.map((action) => `<button type="button" class="secondary-action" data-url="${esc2(action.url)}">${esc2(action.label)}</button>`).join("")}</div>` : ""}`;
+      host.appendChild(section);
+      section.querySelectorAll("[data-url]").forEach((button) => {
+        button.onclick = () => navigate(button.dataset.url);
+      });
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "nav-item";
+      tab.dataset.scroll = id;
+      tab.dataset.companion = entry.id;
+      tab.textContent = entry.label;
+      nav.insertBefore(tab, reports || null);
+    }
+    window.dispatchEvent(new CustomEvent("portalplus:nav-changed"));
+  }
   function enhance(result) {
     try {
       if (!result?.audienceAllowed) return;
@@ -6261,6 +6300,7 @@ Please see https://iframe-resizer.com/upgrade for more details.
       const modules = Array.isArray(result.integrations) ? result.integrations : [];
       renderModule(modules.find((module) => module.id === "assets"), "assets-section", "assets-module");
       renderModule(modules.find((module) => module.id === "smart-approval"), "approvals-section", "approvals-module");
+      renderCompanionMenu(result.menu, modules);
       window.dispatchEvent(new CustomEvent("portalplus:enhancements-ready", { detail: { selfService: result.selfService, integrations: modules } }));
     } catch (_) {
     }

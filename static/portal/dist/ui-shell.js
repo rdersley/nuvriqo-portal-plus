@@ -31,7 +31,8 @@
     return true;
   }
 
-  navItems().forEach((btn) => btn.addEventListener('click', () => scrollToId(btn.dataset.scroll)));
+  // Delegated so tabs added later (companion apps) work too.
+  q('.topnav')?.addEventListener('click', (event) => { const btn = event.target.closest('.nav-item[data-scroll]'); if (btn) scrollToId(btn.dataset.scroll); });
   qa('[data-focus-search]').forEach((btn) => btn.addEventListener('click', () => q('#hero-search-input')?.focus()));
 
   const hero = q('#hero-search-input');
@@ -52,6 +53,8 @@
   // whichever small section was fully visible (usually Reports).
 
   const watcher = new MutationObserver(syncTabs);
-  navItems().map(sectionFor).filter(Boolean).forEach((el) => watcher.observe(el, { attributes: true, attributeFilter: ['hidden'] }));
+  const watch = () => navItems().map(sectionFor).filter(Boolean).forEach((el) => watcher.observe(el, { attributes: true, attributeFilter: ['hidden'] }));
+  watch();
+  window.addEventListener('portalplus:nav-changed', () => { watch(); syncTabs(); });
   syncTabs();
 })();
