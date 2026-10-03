@@ -13,8 +13,6 @@ modules:
         function: portal-resolver
       pages:
         - help_center
-        - portal
-        - my_requests
       unlicensedAccess:
         - customer
 
