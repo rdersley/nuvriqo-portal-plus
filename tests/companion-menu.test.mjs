@@ -59,3 +59,17 @@ test('admin tabs become cards after the announced tabs, capped at four', () => {
   assert.deepEqual(entries[0], { id: 'custom-1', provider: 'portal-plus-admin', section: 'card', order: 200, label: 'Tab 0', description: 'd', links: [{ label: 'Open', url: 'https://example.com' }] });
   assert.equal(normalizeCustomTabs([{ label: 'X', links: [{ label: 'Bad', url: 'ftp://x' }] }])[0].links.length, 0);
 });
+
+import { alwaysOnEntries } from '../src/companion-menu.js';
+
+test('admin can switch on the Approvals and My Assets tabs without an announcement', () => {
+  assert.deepEqual(alwaysOnEntries({}).length, 0);
+  const both = alwaysOnEntries({ showApprovalsTab: true, showAssetsTab: true });
+  assert.deepEqual(both.map((e) => [e.section, e.label]), [['smart-approval', 'Approvals'], ['assets', 'My Assets']]);
+  assert.ok(both.every((e) => Array.isArray(e.links) && !('flag' in e)));
+});
+
+test('an announced entry for the same section wins over the switch', () => {
+  const announced = [{ id: 'smart-approval', section: 'smart-approval', label: 'Approvals' }];
+  assert.deepEqual(alwaysOnEntries({ showApprovalsTab: true }, announced), []);
+});

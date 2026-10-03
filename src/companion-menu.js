@@ -74,6 +74,20 @@ export function normalizeMenuEntries(properties = []) {
 // same-site paths. Shown as cards after the announced tabs.
 export const MAX_CUSTOM_TABS = 4;
 
+// Built-in companion tabs an admin can switch on without the companion app
+// announcing itself (announcing needs the manage:jira-project scope).
+const ALWAYS_TABS = [
+  { flag: 'showApprovalsTab', id: 'smart-approval', section: 'smart-approval', provider: 'nuvriqo-smart-approval-manager', label: 'Approvals', description: 'No approvals currently need your attention.', order: 20 },
+  { flag: 'showAssetsTab', id: 'assets', section: 'assets', provider: 'nuvriqo-asset-manager', label: 'My Assets', description: 'No assets are linked to you yet.', order: 30 },
+];
+
+export function alwaysOnEntries(dashboard = {}, existing = []) {
+  const taken = new Set((Array.isArray(existing) ? existing : []).map((entry) => entry.section));
+  return ALWAYS_TABS
+    .filter((tab) => dashboard?.[tab.flag] === true && !taken.has(tab.section))
+    .map(({ flag, ...entry }) => ({ ...entry, links: [] }));
+}
+
 export function safeTabUrl(url) {
   const value = String(url ?? '').trim();
   if (/^https:\/\/[^\s/\\]+(\/\S*)?$/i.test(value)) return value.slice(0, 500);
