@@ -134,3 +134,10 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Live Portal+ test output and saved customer sessions (never commit sessions)
+live-test-results/
+live-test-report/
+.auth/
+*-customer.json
+customer-*.json

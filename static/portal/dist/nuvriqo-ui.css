@@ -1,0 +1,565 @@
+/*! @nuvriqo/ui v0.1.0 — generated from src/css, do not edit */
+/*
+ * Nuvriqo UI — semantic tokens.
+ *
+ * Every app colour goes through an --nq-* variable. Each one resolves to the
+ * matching Atlassian design token (--ds-*) so Jira light/dark mode works once
+ * the app calls view.theme.enable(). The hex after the comma is the Atlassian
+ * light-mode value, used when tokens are not injected (local harness, tests).
+ *
+ * Apps must not hardcode colours. If a value is missing here, add it here.
+ */
+:root {
+  /* Typography: Atlassian's system stack, so apps look native in Jira. */
+  --nq-font: var(--ds-font-family-body, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Ubuntu, system-ui, "Helvetica Neue", sans-serif);
+  --nq-font-mono: var(--ds-font-family-code, ui-monospace, Menlo, "Segoe UI Mono", "Ubuntu Mono", monospace);
+  --nq-font-size: 14px;
+  --nq-font-size-sm: 12px;
+  --nq-font-size-xs: 11px;
+  --nq-line-height: 1.43;
+
+  /* Text */
+  --nq-text: var(--ds-text, #172b4d);
+  --nq-text-subtle: var(--ds-text-subtle, #44546f);
+  --nq-text-subtlest: var(--ds-text-subtlest, #626f86);
+  --nq-text-disabled: var(--ds-text-disabled, #091e424f);
+  --nq-text-inverse: var(--ds-text-inverse, #ffffff);
+  --nq-text-brand: var(--ds-text-brand, #0c66e4);
+  --nq-text-selected: var(--ds-text-selected, #0c66e4);
+  --nq-text-success: var(--ds-text-success, #216e4e);
+  --nq-text-danger: var(--ds-text-danger, #ae2e24);
+  --nq-text-warning: var(--ds-text-warning, #a54800);
+  --nq-text-information: var(--ds-text-information, #0055cc);
+  --nq-text-discovery: var(--ds-text-discovery, #5e4db2);
+  --nq-link: var(--ds-link, #0c66e4);
+  --nq-link-pressed: var(--ds-link-pressed, #0055cc);
+
+  /* Surfaces */
+  --nq-surface: var(--ds-surface, #ffffff);
+  --nq-surface-sunken: var(--ds-surface-sunken, #f7f8f9);
+  --nq-surface-raised: var(--ds-surface-raised, #ffffff);
+  --nq-surface-overlay: var(--ds-surface-overlay, #ffffff);
+  --nq-surface-hovered: var(--ds-surface-hovered, #f1f2f4);
+  --nq-blanket: var(--ds-blanket, #091e427d);
+
+  /* Backgrounds */
+  --nq-bg-neutral: var(--ds-background-neutral, #091e420f);
+  --nq-bg-neutral-hovered: var(--ds-background-neutral-hovered, #091e4224);
+  --nq-bg-neutral-subtle-hovered: var(--ds-background-neutral-subtle-hovered, #091e420f);
+  --nq-bg-input: var(--ds-background-input, #ffffff);
+  --nq-bg-disabled: var(--ds-background-disabled, #091e4208);
+  --nq-bg-selected: var(--ds-background-selected, #e9f2ff);
+  --nq-bg-brand: var(--ds-background-brand-bold, #0c66e4);
+  --nq-bg-brand-hovered: var(--ds-background-brand-bold-hovered, #0055cc);
+  --nq-bg-brand-pressed: var(--ds-background-brand-bold-pressed, #09326c);
+  --nq-bg-success: var(--ds-background-success, #dcfff1);
+  --nq-bg-success-bold: var(--ds-background-success-bold, #1f845a);
+  --nq-bg-danger: var(--ds-background-danger, #ffeceb);
+  --nq-bg-danger-bold: var(--ds-background-danger-bold, #c9372c);
+  --nq-bg-danger-bold-hovered: var(--ds-background-danger-bold-hovered, #ae2e24);
+  --nq-bg-warning: var(--ds-background-warning, #fff7d6);
+  --nq-bg-warning-bold: var(--ds-background-warning-bold, #f5cd47);
+  --nq-bg-information: var(--ds-background-information, #e9f2ff);
+  --nq-bg-discovery: var(--ds-background-discovery, #f3f0ff);
+  --nq-skeleton: var(--ds-skeleton, #091e420f);
+
+  /* Borders */
+  --nq-border: var(--ds-border, #091e4224);
+  --nq-border-bold: var(--ds-border-bold, #758195);
+  --nq-border-input: var(--ds-border-input, #8590a2);
+  --nq-border-focused: var(--ds-border-focused, #388bff);
+  --nq-border-brand: var(--ds-border-brand, #0c66e4);
+  --nq-border-success: var(--ds-border-success, #22a06b);
+  --nq-border-danger: var(--ds-border-danger, #e2483d);
+  --nq-border-warning: var(--ds-border-warning, #e56910);
+  --nq-border-information: var(--ds-border-information, #1d7afc);
+
+  /* Icons */
+  --nq-icon: var(--ds-icon, #44546f);
+  --nq-icon-subtle: var(--ds-icon-subtle, #626f86);
+
+  /* Elevation */
+  --nq-shadow-raised: var(--ds-shadow-raised, 0 1px 1px #091e4240, 0 0 1px #091e424f);
+  --nq-shadow-overlay: var(--ds-shadow-overlay, 0 8px 12px #091e4226, 0 0 1px #091e424f);
+
+  /* Shape and spacing (Atlassian 8px grid) */
+  --nq-radius-sm: 3px;
+  --nq-radius: 6px;
+  --nq-radius-lg: 10px;
+  --nq-space-050: 4px;
+  --nq-space-100: 8px;
+  --nq-space-150: 12px;
+  --nq-space-200: 16px;
+  --nq-space-300: 24px;
+  --nq-space-400: 32px;
+  --nq-page-width: 1180px;
+  --nq-page-width-narrow: 760px;
+
+  /*
+   * Nuvriqo accent: the "N" mark only. These and --nq-accent-default are the
+   * only fixed colours — the rest of the app stays on Atlassian tokens.
+   */
+  --nq-mark-from: #58b6ff;
+  --nq-mark-to: #1175d5;
+  --nq-mark-text: #ffffff;
+
+  /*
+   * Default for customer-chosen accents (white-label surfaces, e.g. Portal+
+   * --brand). Fixed like a customer colour, so white text on it stays legible
+   * in dark mode. Not for general UI — use --nq-bg-brand there.
+   */
+  --nq-accent-default: #0c66e4;
+}
+
+html[data-color-mode="dark"] {
+  color-scheme: dark;
+}
+
+/*
+ * Nuvriqo UI — base element styles. Scoped to .nq-app so they never leak into
+ * host pages, and wrapped in :where() so they have zero specificity: any app
+ * rule (even a bare class) overrides them.
+ */
+.nq-app {
+  font-family: var(--nq-font);
+  font-size: var(--nq-font-size);
+  line-height: var(--nq-line-height);
+  color: var(--nq-text);
+  background: var(--nq-surface);
+  -webkit-font-smoothing: antialiased;
+}
+:where(.nq-app) *,
+:where(.nq-app) *::before,
+:where(.nq-app) *::after {
+  box-sizing: border-box;
+}
+:where(.nq-app) [hidden] {
+  display: none !important;
+}
+:where(.nq-app) :where(h1, h2, h3, h4) {
+  color: var(--nq-text);
+  margin: 0;
+  line-height: 1.25;
+}
+:where(.nq-app) :where(h1) { font-size: 24px; font-weight: 653; }
+:where(.nq-app) :where(h2) { font-size: 16px; font-weight: 653; }
+:where(.nq-app) :where(h3) { font-size: 14px; font-weight: 653; }
+:where(.nq-app) :where(h4) { font-size: 12px; font-weight: 653; }
+:where(.nq-app) :where(p) { margin: 0; }
+:where(.nq-app) :where(a) { color: var(--nq-link); text-decoration: none; }
+:where(.nq-app) :where(a:hover) { text-decoration: underline; }
+:where(.nq-app) :where(a:active) { color: var(--nq-link-pressed); }
+:where(.nq-app) :where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+}
+:where(.nq-app) :where(code) {
+  font-family: var(--nq-font-mono);
+  font-size: 0.92em;
+  background: var(--nq-bg-neutral);
+  border-radius: var(--nq-radius-sm);
+  padding: 1px 4px;
+}
+:where(.nq-app) :focus-visible {
+  outline: 2px solid var(--nq-border-focused);
+  outline-offset: 2px;
+}
+
+/* Utilities */
+.nq-muted { color: var(--nq-text-subtlest); font-size: var(--nq-font-size-sm); }
+.nq-subtle { color: var(--nq-text-subtle); }
+.nq-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.nq-stack { display: flex; flex-direction: column; gap: var(--nq-space-150); }
+.nq-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nq-space-100); }
+.nq-spread { display: flex; align-items: center; justify-content: space-between; gap: var(--nq-space-200); }
+.nq-grid { display: grid; gap: var(--nq-space-200); }
+.nq-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nq-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.nq-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 720px) {
+  .nq-grid--2,
+  .nq-grid--3,
+  .nq-grid--4 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Nuvriqo UI — components. See docs/STYLE_GUIDE.md for markup and when to use each. */
+
+/* ---------- Page ---------- */
+.nq-page {
+  max-width: var(--nq-page-width);
+  margin: 0 auto;
+  padding: var(--nq-space-300) var(--nq-space-300) var(--nq-space-400);
+}
+.nq-page--narrow { max-width: var(--nq-page-width-narrow); }
+.nq-page--panel { padding: var(--nq-space-150); max-width: none; } /* issue panels, glances, modals */
+@media (max-width: 640px) {
+  .nq-page { padding: var(--nq-space-200) var(--nq-space-200) var(--nq-space-300); }
+}
+
+/* ---------- Header: [N] NUVRIQO / Product / subtitle ........ [v1.2.0] [actions] ---------- */
+.nq-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nq-space-200);
+  margin-bottom: var(--nq-space-300);
+}
+.nq-header__brand { display: flex; align-items: flex-start; gap: var(--nq-space-150); min-width: 0; }
+.nq-header__text { min-width: 0; }
+.nq-header__title { font-size: 24px; font-weight: 653; line-height: 1.2; }
+.nq-header__subtitle { margin-top: var(--nq-space-050); color: var(--nq-text-subtle); }
+.nq-header__meta { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: var(--nq-space-100); }
+.nq-header--compact { margin-bottom: var(--nq-space-150); }
+.nq-header--compact .nq-header__title { font-size: 16px; }
+.nq-header--compact .nq-mark { width: 24px; height: 24px; flex-basis: 24px; font-size: 12px; border-radius: 6px; }
+@media (max-width: 640px) {
+  .nq-header { flex-direction: column; }
+  .nq-header__meta { justify-content: flex-start; }
+}
+
+.nq-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--nq-mark-from), var(--nq-mark-to));
+  color: var(--nq-mark-text);
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1;
+  user-select: none;
+}
+.nq-eyebrow {
+  display: block;
+  font-size: var(--nq-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nq-text-subtlest);
+  margin-bottom: 2px;
+}
+
+/* ---------- Pill (version / environment badge) ---------- */
+.nq-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nq-space-050);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: var(--nq-font-size-sm);
+  font-weight: 600;
+  background: var(--nq-bg-selected);
+  color: var(--nq-text-selected);
+  white-space: nowrap;
+}
+.nq-pill--neutral { background: var(--nq-bg-neutral); color: var(--nq-text-subtle); }
+
+/* ---------- Lozenge (status) — mirrors Atlassian Lozenge ---------- */
+.nq-lozenge {
+  display: inline-block;
+  border-radius: var(--nq-radius-sm);
+  padding: 0 4px;
+  font-size: var(--nq-font-size-xs);
+  font-weight: 700;
+  line-height: 16px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--nq-bg-neutral);
+  color: var(--nq-text-subtle);
+}
+.nq-lozenge--success { background: var(--nq-bg-success); color: var(--nq-text-success); }
+.nq-lozenge--danger { background: var(--nq-bg-danger); color: var(--nq-text-danger); }
+.nq-lozenge--warning { background: var(--nq-bg-warning); color: var(--nq-text-warning); }
+.nq-lozenge--info { background: var(--nq-bg-information); color: var(--nq-text-information); }
+.nq-lozenge--discovery { background: var(--nq-bg-discovery); color: var(--nq-text-discovery); }
+
+/* ---------- Tabs (admin sections) ---------- */
+.nq-tabs {
+  display: flex;
+  gap: var(--nq-space-050);
+  box-shadow: inset 0 -2px 0 var(--nq-border);
+  margin-bottom: var(--nq-space-300);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nq-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--nq-text-subtle);
+  font-weight: 600;
+  padding: var(--nq-space-100) var(--nq-space-150);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nq-tab:hover { color: var(--nq-text); background: var(--nq-bg-neutral-subtle-hovered); }
+.nq-tab[aria-selected="true"],
+.nq-tab.is-active { color: var(--nq-text-selected); border-bottom-color: var(--nq-border-brand); }
+
+/* ---------- Card ---------- */
+.nq-card {
+  background: var(--nq-surface-raised);
+  border: 1px solid var(--nq-border);
+  border-radius: var(--nq-radius-lg);
+  box-shadow: var(--nq-shadow-raised);
+  margin-bottom: var(--nq-space-200);
+}
+.nq-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nq-space-200);
+  padding: var(--nq-space-200) var(--nq-space-200) 0;
+}
+.nq-card__title { font-size: 16px; font-weight: 653; }
+.nq-card__desc { margin-top: var(--nq-space-050); color: var(--nq-text-subtle); font-size: var(--nq-font-size-sm); }
+.nq-card__body { padding: var(--nq-space-200); }
+.nq-card__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nq-space-100);
+  padding: var(--nq-space-150) var(--nq-space-200);
+  border-top: 1px solid var(--nq-border);
+}
+.nq-card--flat { box-shadow: none; }
+.nq-card--accent { border-left: 4px solid var(--nq-border-brand); }
+
+/* ---------- Stats (KPI tiles) ---------- */
+.nq-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--nq-space-100); }
+.nq-stat { border: 1px solid var(--nq-border); border-radius: var(--nq-radius); padding: var(--nq-space-150); background: var(--nq-surface); }
+.nq-stat__value { display: block; font-size: 20px; font-weight: 653; color: var(--nq-text); }
+.nq-stat__label { display: block; font-size: var(--nq-font-size-sm); color: var(--nq-text-subtlest); }
+
+/* ---------- Buttons — mirror Atlassian Button appearances ---------- */
+.nq-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nq-space-050);
+  height: 32px;
+  padding: 0 var(--nq-space-150);
+  border: 0;
+  border-radius: var(--nq-radius-sm);
+  font-size: var(--nq-font-size);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--nq-bg-neutral);
+  color: var(--nq-text-subtle);
+  transition: background 0.1s ease-out;
+}
+.nq-btn:hover { background: var(--nq-bg-neutral-hovered); text-decoration: none; }
+.nq-btn--primary { background: var(--nq-bg-brand); color: var(--nq-text-inverse); }
+.nq-btn--primary:hover { background: var(--nq-bg-brand-hovered); }
+.nq-btn--primary:active { background: var(--nq-bg-brand-pressed); }
+.nq-btn--danger { background: var(--nq-bg-danger-bold); color: var(--nq-text-inverse); }
+.nq-btn--danger:hover { background: var(--nq-bg-danger-bold-hovered); }
+.nq-btn--subtle { background: transparent; }
+.nq-btn--subtle:hover { background: var(--nq-bg-neutral-subtle-hovered); }
+.nq-btn--link { background: transparent; color: var(--nq-link); padding: 0 var(--nq-space-050); }
+.nq-btn--link:hover { background: transparent; text-decoration: underline; }
+.nq-btn--small { height: 24px; padding: 0 var(--nq-space-100); font-size: var(--nq-font-size-sm); }
+.nq-btn[aria-pressed="true"],
+.nq-btn.is-selected { background: var(--nq-bg-selected); color: var(--nq-text-selected); }
+.nq-btn:disabled,
+.nq-btn[aria-disabled="true"] {
+  background: var(--nq-bg-disabled);
+  color: var(--nq-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ---------- Forms ---------- */
+.nq-field { display: flex; flex-direction: column; gap: var(--nq-space-050); margin-bottom: var(--nq-space-200); }
+.nq-label { font-size: var(--nq-font-size-sm); font-weight: 600; color: var(--nq-text-subtle); }
+.nq-label .nq-required { color: var(--nq-text-danger); margin-left: 2px; }
+.nq-input,
+.nq-select,
+.nq-textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--nq-border-input);
+  border-radius: var(--nq-radius-sm);
+  background: var(--nq-bg-input);
+  color: var(--nq-text);
+}
+.nq-textarea { min-height: 80px; resize: vertical; }
+.nq-select[multiple] { min-height: 96px; }
+.nq-input:focus,
+.nq-select:focus,
+.nq-textarea:focus { outline: none; border-color: var(--nq-border-focused); box-shadow: inset 0 0 0 1px var(--nq-border-focused); }
+.nq-input:disabled,
+.nq-select:disabled,
+.nq-textarea:disabled { background: var(--nq-bg-disabled); color: var(--nq-text-disabled); cursor: not-allowed; }
+.nq-input[aria-invalid="true"],
+.nq-select[aria-invalid="true"],
+.nq-textarea[aria-invalid="true"] { border-color: var(--nq-border-danger); }
+.nq-help { font-size: var(--nq-font-size-sm); color: var(--nq-text-subtlest); }
+.nq-error-text { font-size: var(--nq-font-size-sm); color: var(--nq-text-danger); }
+.nq-check { display: flex; align-items: center; gap: var(--nq-space-100); margin: var(--nq-space-100) 0; cursor: pointer; }
+.nq-check input { accent-color: var(--nq-bg-brand); width: 16px; height: 16px; margin: 0; }
+
+/* ---------- Notice (section message) ---------- */
+.nq-notice {
+  display: flex;
+  gap: var(--nq-space-150);
+  padding: var(--nq-space-150) var(--nq-space-200);
+  border-radius: var(--nq-radius);
+  background: var(--nq-bg-information);
+  color: var(--nq-text);
+  margin-bottom: var(--nq-space-200);
+}
+.nq-notice::before {
+  content: "i";
+  flex: 0 0 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--nq-text-inverse);
+  background: var(--nq-text-information);
+  margin-top: 1px;
+}
+.nq-notice__title { display: block; font-weight: 653; margin-bottom: 2px; }
+.nq-notice--success { background: var(--nq-bg-success); }
+.nq-notice--success::before { content: "\2713"; background: var(--nq-text-success); }
+.nq-notice--warning { background: var(--nq-bg-warning); }
+.nq-notice--warning::before { content: "!"; background: var(--nq-text-warning); }
+.nq-notice--error { background: var(--nq-bg-danger); }
+.nq-notice--error::before { content: "!"; background: var(--nq-text-danger); }
+.nq-notice--discovery { background: var(--nq-bg-discovery); }
+.nq-notice--discovery::before { content: "?"; background: var(--nq-text-discovery); }
+
+/* ---------- Empty state ---------- */
+.nq-empty {
+  text-align: center;
+  padding: var(--nq-space-400) var(--nq-space-200);
+  border: 1px dashed var(--nq-border);
+  border-radius: var(--nq-radius-lg);
+  color: var(--nq-text-subtle);
+}
+.nq-empty__title { display: block; font-size: 16px; font-weight: 653; color: var(--nq-text); margin-bottom: var(--nq-space-050); }
+.nq-empty__actions { margin-top: var(--nq-space-200); display: flex; justify-content: center; gap: var(--nq-space-100); }
+.nq-empty--compact { padding: var(--nq-space-200); font-size: var(--nq-font-size-sm); }
+
+/* ---------- Loading ---------- */
+.nq-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 2px solid var(--nq-border);
+  border-top-color: var(--nq-border-brand);
+  border-radius: 50%;
+  animation: nq-spin 0.8s linear infinite;
+}
+.nq-spinner--small { width: 14px; height: 14px; }
+.nq-spinner--large { width: 32px; height: 32px; border-width: 3px; }
+.nq-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nq-space-100);
+  padding: var(--nq-space-300);
+  color: var(--nq-text-subtlest);
+}
+.nq-loading--inline { display: inline-flex; padding: 0; }
+.nq-skeleton {
+  display: block;
+  height: 12px;
+  border-radius: var(--nq-radius-sm);
+  background: var(--nq-skeleton);
+  animation: nq-pulse 1.4s ease-in-out infinite;
+}
+@keyframes nq-spin { to { transform: rotate(360deg); } }
+@keyframes nq-pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) {
+  .nq-spinner { animation-duration: 2s; }
+  .nq-skeleton { animation: none; }
+}
+
+/* ---------- Table ---------- */
+.nq-table-wrap { overflow-x: auto; border: 1px solid var(--nq-border); border-radius: var(--nq-radius); }
+.nq-table { width: 100%; border-collapse: collapse; font-size: var(--nq-font-size); }
+.nq-table th {
+  text-align: left;
+  font-size: var(--nq-font-size-sm);
+  font-weight: 653;
+  color: var(--nq-text-subtle);
+  padding: var(--nq-space-100) var(--nq-space-150);
+  border-bottom: 2px solid var(--nq-border);
+  white-space: nowrap;
+}
+.nq-table td { padding: var(--nq-space-100) var(--nq-space-150); border-bottom: 1px solid var(--nq-border); vertical-align: middle; }
+.nq-table tbody tr:last-child td { border-bottom: 0; }
+.nq-table tbody tr:hover { background: var(--nq-surface-hovered); }
+.nq-table .nq-table__actions { text-align: right; white-space: nowrap; }
+
+/* ---------- Sticky action bar (Save / Cancel) ---------- */
+.nq-actionbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nq-space-200);
+  padding: var(--nq-space-150) var(--nq-space-200);
+  margin-top: var(--nq-space-300);
+  background: var(--nq-surface-overlay);
+  border: 1px solid var(--nq-border);
+  border-radius: var(--nq-radius-lg);
+  box-shadow: var(--nq-shadow-overlay);
+}
+.nq-actionbar__actions { display: flex; gap: var(--nq-space-100); }
+.nq-save-state { font-size: var(--nq-font-size-sm); color: var(--nq-text-subtlest); }
+.nq-save-state.is-dirty { color: var(--nq-text-warning); font-weight: 600; }
+.nq-save-state.is-saved { color: var(--nq-text-success); }
+
+/* ---------- Modal ---------- */
+.nq-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--nq-space-200);
+  background: var(--nq-blanket);
+}
+.nq-dialog {
+  width: min(600px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--nq-surface-overlay);
+  border-radius: var(--nq-radius-lg);
+  box-shadow: var(--nq-shadow-overlay);
+}
+.nq-dialog--wide { width: min(960px, 100%); }
+.nq-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: var(--nq-space-200); padding: var(--nq-space-300) var(--nq-space-300) var(--nq-space-150); }
+.nq-dialog__title { font-size: 20px; font-weight: 653; }
+.nq-dialog__body { padding: 0 var(--nq-space-300); overflow: auto; }
+.nq-dialog__foot { display: flex; justify-content: flex-end; gap: var(--nq-space-100); padding: var(--nq-space-300); }
+
+/* ---------- Footer ---------- */
+.nq-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nq-space-100);
+  margin-top: var(--nq-space-400);
+  font-size: var(--nq-font-size-xs);
+  color: var(--nq-text-subtlest);
+}
+.nq-footer a { color: inherit; }

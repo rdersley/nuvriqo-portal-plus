@@ -1,46 +1,57 @@
 # Nuvriqo Portal+ for Jira Service Management
 
-Turn Jira Service Management customer portals into clearer, audience-aware service dashboards.
+A branded customer workspace inside the Jira Service Management portal: dashboard, requests, reports, guides and self-service, per customer, on top of JSM.
 
 ## Status
 
-**V1 specification locked — foundation phase.**
+**1.0.0 — Marketplace release.** Forge app, Atlassian-hosted compute and storage, no external egress. JSM remains the system of record for customers, requests, workflows, SLAs and notifications.
 
-Portal+ is being designed as a Forge/Cloud-first Marketplace app. Jira Service Management remains the system of record for customer identity, permissions, requests, comments, request forms, workflows and notifications.
+## Capabilities
 
-## V1 product goals
+**Customer workspace**
+- Branded dashboard in the JSM portal header: brand name, uploaded logo, accent colour, hero and search wording, optional white-label top bar.
+- Counters (open, awaiting customer, awaiting support) that open matching request views; Action Centre for requests waiting on the customer.
+- Service tiles and quick actions linked to the customer's request types; announcements and quick links.
+- My Requests: search, status, type and date filters, sorting, saved views, up to 8 configurable columns, real SLA status per request.
+- Request detail panel: configured read-only and editable fields (type-aware editors), JSM SLA, progress timeline, admin-enabled Close and Escalate.
+- Customer reports: created vs resolved, by type, by status, SLA met/breached, average resolution, 30-day trend, period selector.
+- CSV and Excel export of the customer's visible requests (up to 1,000).
+- Guides & documents library per customer, linking to knowledge base articles.
 
-- One JSM project can power multiple Portal+ service/category experiences.
-- Organization-aware navigation and audience rules.
-- Branded Portal+ customer experience.
-- Customer dashboard with request-state summaries and recent requests.
-- Configurable service/category cards and request-type shortcuts.
-- Enhanced My Requests experience with search, filters, configurable columns, sorting and pagination.
-- Customer-visible custom fields.
-- CSV export.
-- Automatic discovery of Jira/JSM configuration.
-- No hard-coded project, organization, request type, field or status IDs.
-- Marketplace-ready tenant isolation and permission handling from the start.
+**Multi-customer**
+- Experiences per JSM organisation, each with its own branding, services, guides and settings.
+- Help-center-aware routing: several JSM help centers on one shared project, each showing its customer's experience.
+- Optional narrowing of requests by a dropdown custom field (for example Customer = Acme).
 
-## V1 scope policy
+**Companion apps**
+- Approvals from Nuvriqo Smart Approval Manager and My Assets from Nuvriqo Asset Manager, when installed.
 
-The V1 scope is documented in `docs/V1-SPEC.md`. Features outside that specification should not be added to V1 without an explicit scope decision.
+## Security model
 
-## Architecture principles
+Portal+ reads Jira with app permissions to avoid a per-customer consent prompt, and enforces the customer boundary itself on every server call: requests the customer reported or that are shared with their organisations, in the current project, optionally narrowed further. Help center addresses choose branding only; organisation membership decides access. Writes happen only for admin-enabled edits and transitions, with an internal audit comment. Full detail, stored data and scope justification: `docs/SECURITY-AND-PRIVACY.md`.
 
-1. JSM remains the system of record.
-2. Customer operations use the customer's Jira/JSM permissions wherever possible.
-3. Administrative discovery/configuration uses controlled app permissions.
-4. Portal+ configuration is tenant-specific and stored securely.
-5. Installations must work without source-code changes.
-6. Ryanair/SD may be used as a real-world test scenario, but no customer-specific assumptions belong in product code.
+## Development
 
-## Repository structure
+```bash
+npm install
+npm test            # build, release checks, UI style check, behaviour tests
+npm audit --omit=dev --audit-level=high
+forge lint
+npm run test:live   # optional live checks, see live-tests/README.md
+```
 
-- `docs/` — product specification, architecture and implementation decisions.
-- `src/` — Forge application source (added after the technical spike is approved).
-- `static/` — Custom UI resources (added when required).
+Behaviour tests run the real resolvers against an in-memory Jira (`tests/helpers/fake-jira.mjs`) that applies JSM customer visibility and rejects unexpected queries.
 
-## Current milestone
+## Licensing
 
-Validate the supported Forge JSM portal extension points and customer API access on a real JSM Cloud site before implementing V1 features.
+`manifest.yml` must keep `app.licensing.enabled: true` for the paid Marketplace release. Outside production Portal+ is always active for testing. In production a Marketplace licence decides; vendor evaluation installs without a licence object are allowed only for cloud IDs listed in the `PORTALPLUS_EVALUATION_CLOUD_IDS` production variable (`src/licensing.js`).
+
+`manifest.template.yml` is the repository-safe template with `REPLACE_WITH_FORGE_APP_ID`.
+
+## Documentation
+
+- `docs/SECURITY-AND-PRIVACY.md` — security, stored data, scopes.
+- `docs/MARKETPLACE-LISTING.md` — listing copy.
+- `docs/MARKETPLACE-READINESS.md` — submission checklist.
+- `docs/ARCHITECTURE.md` — architecture decisions.
+- `live-tests/README.md` — live multi-help-center checks.

@@ -1,0 +1,130 @@
+// In-memory stand-in for the Jira/JSM REST endpoints Portal+ calls with
+// asApp(). Search applies JSM customer visibility semantics to the JQL Portal+
+// generates, and rejects any JQL outside the exact expected grammar so an
+// injected clause fails loudly instead of being silently ignored.
+
+const QUOTED = '"((?:\\\\.|[^"\\\\])*)"';
+const unescape = (text) => text.replace(/\\(.)/g, '$1');
+const JQL = new RegExp(
+  `^project = (\\d+) AND \\(reporter = ${QUOTED}(?: OR organizations in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?\\)(?: AND cf\\[(\\d+)\\] in \\(((?:${QUOTED.replace('(', '(?:')},?)+)\\))?(?: AND key = ${QUOTED})? ORDER BY created DESC$`
+);
+
+const quotedList = (list) => (list ? [...list.matchAll(new RegExp(QUOTED, 'g'))].map((m) => unescape(m[1])) : []);
+
+export function parseCustomerJql(jql) {
+  const match = JQL.exec(jql);
+  if (!match) throw new Error(`Unexpected JQL shape: ${jql}`);
+  const [, projectId, reporter, orgList, scopeFieldId, scopeList, key] = match;
+  return {
+    projectId,
+    reporter: unescape(reporter),
+    orgs: quotedList(orgList),
+    scope: scopeFieldId ? { fieldId: `customfield_${scopeFieldId}`, values: quotedList(scopeList) } : null,
+    key: key ? unescape(key) : ''
+  };
+}
+
+// Dropdown values are { value } objects (single) or arrays of them (multi).
+const optionValues = (value) => (Array.isArray(value) ? value : value == null ? [] : [value]).map((option) => (option && typeof option === 'object' ? option.value : option));
+
+const json = (status, body) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => body,
+  text: async () => (body === undefined ? '' : JSON.stringify(body))
+});
+
+export function createFakeJira({ issues = [], memberships = {}, organizations = [], transitions = {}, discovery = null, editMeta = {}, statusHistory = {}, serviceDesks = { 35: '10000' }, fieldDefinitions = [] } = {}) {
+  const calls = [];
+  const orgName = (id) => organizations.find((org) => org.id === id)?.name;
+
+  function visibleTo(query) {
+    return issues
+      .filter((issue) => issue.projectId === query.projectId)
+      .filter((issue) => issue.reporter === query.reporter || issue.orgIds.some((id) => query.orgs.includes(orgName(id))))
+      .filter((issue) => !query.scope || optionValues(issue.fields?.[query.scope.fieldId]).some((value) => query.scope.values.includes(value)))
+      .filter((issue) => !query.key || issue.key === query.key)
+      .sort((a, b) => b.created.localeCompare(a.created));
+  }
+
+  // Like Jira, search returns only the extra fields it was asked for.
+  function toIssue(issue, requested = []) {
+    const wanted = new Set(requested);
+    const extra = Object.fromEntries(Object.entries(issue.fields || {}).filter(([id]) => wanted.has(id)));
+    return {
+      key: issue.key,
+      fields: {
+        summary: issue.summary,
+        status: { id: issue.statusId, name: issue.statusName },
+        created: issue.created,
+        updated: issue.created,
+        resolutiondate: null,
+        reporter: { accountId: issue.reporter, displayName: issue.reporterName || issue.reporter },
+        ...extra
+      },
+      properties: {}
+    };
+  }
+
+  async function requestJira(path, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    const url = new URL(String(path), 'https://jira.test');
+    calls.push({ method, path: url.pathname, query: Object.fromEntries(url.searchParams), body });
+
+    if (method === 'GET' && url.pathname === '/rest/servicedeskapi/organization') {
+      const ids = memberships[url.searchParams.get('accountId')] || [];
+      return json(200, { values: organizations.filter((org) => ids.includes(org.id)) });
+    }
+    if (method === 'POST' && url.pathname === '/rest/api/3/search/jql') {
+      const all = visibleTo(parseCustomerJql(body.jql));
+      const start = body.nextPageToken ? Number(body.nextPageToken) : 0;
+      const page = all.slice(start, start + body.maxResults);
+      const next = start + page.length < all.length ? String(start + page.length) : undefined;
+      return json(200, { issues: page.map((issue) => toIssue(issue, body.fields || [])), nextPageToken: next, isLast: !next });
+    }
+    if (url.pathname.startsWith('/rest/api/3/project/') && url.pathname.includes('/properties/')) return json(404, { errorMessages: ['not found'] });
+
+    if (method === 'GET' && url.pathname === '/rest/api/3/field') return json(200, fieldDefinitions);
+    const serviceDeskPath = /^\/rest\/servicedeskapi\/servicedesk\/(\d+)$/.exec(url.pathname);
+    if (serviceDeskPath && method === 'GET') {
+      const projectId = serviceDesks[serviceDeskPath[1]];
+      return projectId ? json(200, { id: serviceDeskPath[1], projectId }) : json(404, { errorMessage: 'Service desk not found' });
+    }
+
+    // Admin discovery: { serviceDesk, requestTypes, fieldsByRequestType, statuses }
+    if (discovery && method === 'GET') {
+      if (url.pathname === '/rest/servicedeskapi/servicedesk') return json(200, { values: [discovery.serviceDesk] });
+      if (/^\/rest\/servicedeskapi\/servicedesk\/[^/]+\/requesttype$/.test(url.pathname)) return json(200, { values: discovery.requestTypes });
+      const typeFields = /^\/rest\/servicedeskapi\/servicedesk\/[^/]+\/requesttype\/([^/]+)\/field$/.exec(url.pathname);
+      if (typeFields) return json(200, { requestTypeFields: discovery.fieldsByRequestType[typeFields[1]] || [] });
+      if (/^\/rest\/servicedeskapi\/servicedesk\/[^/]+\/organization$/.test(url.pathname)) return json(200, { values: organizations });
+      if (/^\/rest\/api\/3\/project\/[^/]+\/statuses$/.test(url.pathname)) return json(200, [{ statuses: discovery.statuses }]);
+    }
+
+    const editMetaPath = /^\/rest\/api\/3\/issue\/([^/]+)\/editmeta$/.exec(url.pathname);
+    if (editMetaPath && method === 'GET') return json(200, { fields: editMeta[editMetaPath[1]] || {} });
+
+    const transitionPath =/^\/rest\/api\/3\/issue\/([^/]+)\/transitions$/.exec(url.pathname);
+    if (transitionPath && method === 'GET') return json(200, { transitions: transitions[transitionPath[1]] || [] });
+    if (transitionPath && method === 'POST') return json(204);
+    if (/^\/rest\/api\/3\/issue\/[^/]+\/comment$/.test(url.pathname) && method === 'POST') return json(201, { id: '1' });
+    if (/^\/rest\/api\/3\/issue\/[^/]+$/.test(url.pathname) && method === 'PUT') return json(204);
+    if (/^\/rest\/servicedeskapi\/request\/[^/]+\/sla$/.test(url.pathname)) return json(200, { values: [] });
+    const statusPath = /^\/rest\/servicedeskapi\/request\/([^/]+)\/status$/.exec(url.pathname);
+    if (statusPath) return statusHistory[statusPath[1]] === 'error' ? json(500, {}) : json(200, { values: statusHistory[statusPath[1]] || [] });
+
+    return json(404, { errorMessages: [`fake-jira: no route for ${method} ${url.pathname}`] });
+  }
+
+  return { requestJira, calls, writes: () => calls.filter((call) => call.method !== 'GET' && call.path !== '/rest/api/3/search/jql') };
+}
+
+// Mirrors @forge/api's route tag closely enough for path construction.
+export function route(strings, ...values) {
+  return strings.reduce((out, text, index) => {
+    if (index >= values.length) return out + text;
+    const value = values[index];
+    return out + text + (value instanceof URLSearchParams ? value.toString() : encodeURIComponent(String(value)));
+  }, '');
+}

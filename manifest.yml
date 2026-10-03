@@ -1,0 +1,47 @@
+app:
+  id: ari:cloud:ecosystem::app/f6485514-56d4-419c-8bc7-cd097d0076d0
+  licensing:
+    enabled: true
+  runtime:
+    name: nodejs22.x
+
+modules:
+  jiraServiceManagement:portalHeader:
+    - key: nuvriqo-portal-plus-dashboard
+      resource: portal-ui
+      resolver:
+        function: portal-resolver
+      pages:
+        - help_center
+        - portal
+        - my_requests
+      unlicensedAccess:
+        - customer
+
+  jira:projectSettingsPage:
+    - key: nuvriqo-portal-plus-settings
+      resource: admin-ui
+      resolver:
+        function: admin-resolver
+      title: Nuvriqo Portal+
+      layout: blank
+
+  function:
+    - key: portal-resolver
+      handler: portal-resolver.handler
+    - key: admin-resolver
+      handler: admin-resolver.handler
+
+resources:
+  - key: portal-ui
+    path: static/portal/dist
+  - key: admin-ui
+    path: static/admin/dist
+
+permissions:
+  scopes:
+    - read:servicedesk-request
+    - read:jira-work
+    - write:jira-work
+    - manage:servicedesk-customer
+    - storage:app
