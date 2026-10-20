@@ -12,3 +12,11 @@
 /* Page layout picker in the dashboard options row */
 .layout-pick{display:flex;align-items:center;gap:8px}
 .layout-pick select{border:1px solid var(--nq-border-input);border-radius:5px;padding:4px 6px;background:var(--nq-surface-raised);color:var(--nq-text)}
+
+/* Backup & restore */
+.backup-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.file-button{display:inline-flex;align-items:center;cursor:pointer}
+#backupStatus.ok{color:var(--nq-text-success)}
+#backupStatus.error{color:var(--nq-text-danger)}
+.file-button{background:var(--nq-bg-neutral);color:var(--nq-text);min-height:32px;padding:0 12px;border-radius:var(--nq-radius-sm);font-weight:500;font-size:13px}
+.file-button:hover{background:var(--nq-bg-neutral-hovered)}
